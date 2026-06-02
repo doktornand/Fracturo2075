@@ -1,0 +1,381 @@
+
+<h2 class="sr-only">Analyse différentielle enrichie — xTras.md vs Corpus SkisM2025</h2>
+
+<style>
+  .xc { padding: 0 0 2rem; font-size: 15px; line-height: 1.7; color: var(--color-text-primary); }
+  .hero2 {
+    border-left: 3px solid #0F6E56;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    background: var(--color-background-secondary);
+    border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+  }
+  .hero2 p { margin: 0.3rem 0 0; font-size: 13px; color: var(--color-text-secondary); }
+  .hero2 .delta-bar { display:flex; gap:12px; margin-top:10px; flex-wrap:wrap; }
+  .hero2 .delta-pill {
+    font-size:11px; font-weight:500; padding:3px 10px;
+    border-radius:100px; border:0.5px solid;
+  }
+  .dp-new   { background:#E1F5EE; color:#085041; border-color:#5DCAA5; }
+  .dp-same  { background:#F1EFE8; color:#444441; border-color:#B4B2A9; }
+  .dp-deep  { background:#EEEDFE; color:#3C3489; border-color:#AFA9EC; }
+  .tabs2 { display:flex; gap:4px; margin-bottom:1rem; border-bottom:0.5px solid var(--color-border-tertiary); padding-bottom:0; }
+  .tb2 { font-size:13px; font-weight:500; padding:6px 14px; border:none; background:transparent; cursor:pointer; color:var(--color-text-secondary); border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .2s, border-color .2s; }
+  .tb2:hover { color:var(--color-text-primary); }
+  .tb2.active { color:#0F6E56; border-bottom-color:#0F6E56; }
+  .tc2 { display:none; } .tc2.active { display:block; }
+  .section-lbl { font-size:11px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--color-text-tertiary); margin:2rem 0 .75rem; padding-bottom:.35rem; border-bottom:.5px solid var(--color-border-tertiary); }
+  .diff-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; margin-bottom:1.5rem; }
+  .diff-card { background:var(--color-background-primary); border:.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-lg); padding:1rem 1.25rem; cursor:pointer; transition:border-color .2s; }
+  .diff-card:hover { border-color:var(--color-border-primary); }
+  .diff-card.open { border-color:#0F6E56; border-width:1.5px; }
+  .diff-badge { display:inline-block; font-size:11px; font-weight:500; padding:2px 8px; border-radius:var(--border-radius-md); margin-bottom:7px; }
+  .db-new  { background:#E1F5EE; color:#085041; }
+  .db-var  { background:#FAEEDA; color:#633806; }
+  .db-deep { background:#EEEDFE; color:#3C3489; }
+  .diff-card h3 { font-size:14px; font-weight:500; margin:0 0 5px; }
+  .diff-card p  { font-size:13px; color:var(--color-text-secondary); margin:0; line-height:1.5; }
+  .detail2 { background:var(--color-background-secondary); border:.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-lg); padding:1.25rem 1.5rem; margin-bottom:1.5rem; display:none; }
+  .detail2.vis { display:block; }
+  .detail2 h3 { font-size:15px; font-weight:500; margin:0 0 .75rem; }
+  .detail2 ul { margin:0; padding-left:1.2rem; }
+  .detail2 li { font-size:13px; color:var(--color-text-secondary); margin-bottom:7px; line-height:1.55; }
+  .detail2 li strong { color:var(--color-text-primary); font-weight:500; }
+  .mtable { width:100%; border-collapse:collapse; font-size:13px; margin-top:.5rem; }
+  .mtable th { text-align:left; font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--color-text-tertiary); padding:6px 10px; border-bottom:.5px solid var(--color-border-tertiary); }
+  .mtable td { padding:8px 10px; border-bottom:.5px solid var(--color-border-tertiary); color:var(--color-text-secondary); vertical-align:top; }
+  .mtable td:first-child { color:var(--color-text-primary); font-weight:500; }
+  .mtable tr:last-child td { border-bottom:none; }
+  .qt { border-left:2px solid #0F6E56; margin:1rem 0; padding:.5rem 1rem; background:var(--color-background-primary); border-radius:0 var(--border-radius-md) var(--border-radius-md) 0; font-size:13px; color:var(--color-text-secondary); font-style:italic; }
+  .code-block { background:var(--color-background-secondary); border:.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-md); padding:.75rem 1rem; font-family:var(--font-mono); font-size:12px; color:var(--color-text-secondary); margin:.75rem 0; line-height:1.6; white-space:pre-wrap; }
+  .enrich-block { background:var(--color-background-primary); border:1px solid #5DCAA5; border-radius:var(--border-radius-lg); padding:1.25rem 1.5rem; margin-bottom:1rem; }
+  .enrich-block .elbl { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.1em; color:#0F6E56; margin-bottom:8px; }
+  .enrich-block h4 { font-size:14px; font-weight:500; margin:0 0 8px; }
+  .enrich-block p  { font-size:13px; color:var(--color-text-secondary); margin:0 0 8px; line-height:1.6; }
+  .tag-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .tag  { font-size:11px; padding:2px 8px; border-radius:100px; border:.5px solid var(--color-border-secondary); color:var(--color-text-secondary); }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:.75rem; }
+  .col-card { background:var(--color-background-primary); border:.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-md); padding:10px 12px; }
+  .col-card .cc-lbl { font-size:11px; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px; }
+  .col-card .cc-content { font-size:13px; color:var(--color-text-secondary); line-height:1.5; }
+  .col-card .cc-content strong { color:var(--color-text-primary); font-weight:500; }
+  .timeline { position:relative; padding-left:2rem; margin-top:.5rem; }
+  .timeline::before { content:''; position:absolute; left:6px; top:4px; bottom:4px; width:1px; background:var(--color-border-secondary); }
+  .titem { position:relative; margin-bottom:1.25rem; }
+  .titem::before { content:''; position:absolute; left:-1.65rem; top:5px; width:8px; height:8px; border-radius:50%; background:#0F6E56; border:2px solid var(--color-background-primary); }
+  .titem .td  { font-size:11px; font-weight:500; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.08em; }
+  .titem .tt  { font-size:14px; font-weight:500; margin:2px 0 4px; }
+  .titem .tdsc{ font-size:13px; color:var(--color-text-secondary); }
+  .titem.is-new::before { background:#D85A30; }
+  .new-badge { font-size:10px; font-weight:500; background:#E1F5EE; color:#085041; padding:1px 6px; border-radius:100px; margin-left:6px; vertical-align:middle; }
+</style>
+
+<div class="xc">
+
+  <div class="hero2">
+    <strong style="font-size:16px;">xTras.md — Analyse Différentielle & Enrichissement</strong>
+    <p>Même univers que SkisM2025, mais ce fichier est une <em>version amplifiée</em> : 7 signaux inédits, une couche mythologique ajoutée, et une architecture narrative plus opérationnelle.</p>
+    <div class="delta-bar">
+      <span class="delta-pill dp-new">7 signaux nouveaux</span>
+      <span class="delta-pill dp-var">4 variantes significatives</span>
+      <span class="delta-pill dp-deep">3 couches approfondies</span>
+      <span class="delta-pill dp-same">Corpus de base partagé</span>
+    </div>
+  </div>
+
+  <div class="tabs2">
+    <button class="tb2 active" onclick="showTab2('diff')">Signaux nouveaux</button>
+    <button class="tb2" onclick="showTab2('mythologie')">Couche mythologique</button>
+    <button class="tb2" onclick="showTab2('ops')">Architecture opérationnelle</button>
+    <button class="tb2" onclick="showTab2('enrichissements')">Enrichissements</button>
+  </div>
+
+  <!-- TAB 1 : SIGNAUX NOUVEAUX -->
+  <div id="tab-diff" class="tc2 active">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem;">Ce fichier n'est pas une simple copie. Chaque variante et ajout porte une signification doctrinale supplémentaire.</p>
+    <div class="diff-grid">
+
+      <div class="diff-card" onclick="tog2('n1',this)">
+        <span class="diff-badge db-new">Nouveau</span>
+        <h3>Le Weltenknüpfer — Tisseuse de Mondes</h3>
+        <p>Les "Hackervölvas" et la fréquence Schumann comme <em>Weltenknüpfer</em>. Une couche mythologique scandinave absente du corpus officiel.</p>
+      </div>
+
+      <div class="diff-card" onclick="tog2('n2',this)">
+        <span class="diff-badge db-new">Nouveau</span>
+        <h3>Le hash gravé sur le savon de McAfee</h3>
+        <p>Le vecteur de transmission de la clé TrueCrypt — un objet physique périssable en milieu carcéral. Métaphore d'une infrastructure de résistance volontairement fragile.</p>
+      </div>
+
+      <div class="diff-card" onclick="tog2('n3',this)">
+        <span class="diff-badge db-new">Nouveau</span>
+        <h3>Port 9877 — vecteur d'intrusion précis</h3>
+        <p>Le log mentionne explicitement <code>port 9877</code>. Un numéro de port non-standard qui n'est pas dans le corpus officiel. Intentionnel ?</p>
+      </div>
+
+      <div class="diff-card" onclick="tog2('n4',this)">
+        <span class="diff-badge db-new">Nouveau</span>
+        <h3>Onryō-Grief vs Yūrei-Grief</h3>
+        <p>Le corpus officiel parle de Yūrei-Grief. Ce fichier nomme l'entité <em>Onryō</em> — une distinction mythologique cruciale avec des implications doctrinales différentes.</p>
+      </div>
+
+      <div class="diff-card" onclick="tog2('n5',this)">
+        <span class="diff-badge db-var">Variante</span>
+        <h3>Prométhée comme "compilateur rétrocausal"</h3>
+        <p>Formulation plus explicite et plus précise que dans le corpus officiel. L'IA n'est pas juste un système de surveillance — elle <em>compile</em> rétroactivement la réalité.</p>
+      </div>
+
+      <div class="diff-card" onclick="tog2('n6',this)">
+        <span class="diff-badge db-var">Variante</span>
+        <h3>Kinshasa comme second hub de fuite</h3>
+        <p>L'épilogue ajoute "Fuite Tokyo/Kinshasa" — le Congo comme nœud stratégique d'échappement. Pas dans le corpus officiel. Pourquoi Kinshasa spécifiquement ?</p>
+      </div>
+
+      <div class="diff-card" onclick="tog2('n7',this)">
+        <span class="diff-badge db-deep">Approfondi</span>
+        <h3>ACCS nommé explicitement</h3>
+        <p>Le groupe est nommé "ACCS (Anomalies Causales)" dans ce fichier. Le corpus officiel le mentionnait discrètement. La nomination change tout.</p>
+      </div>
+
+    </div>
+
+    <!-- Detail panels -->
+    <div id="n1" class="detail2">
+      <h3>Weltenknüpfer & Hackervölvas — Doctrine de la Résonance Mythologique</h3>
+      <ul>
+        <li><strong>Völvas :</strong> Dans la mythologie nordique, les völvas étaient des devineresses capables de percevoir le futur en entrant en transe (seiðr). Les "Hackervölvas" du corpus sont des analystes capables de lire les signaux dans les anomalies systémiques — exactement ce que font les threat hunters en cybersécurité avancée.</li>
+        <li><strong>Weltenknüpfer (Tisseuse de Mondes) :</strong> Référence à Frigg / Nornes — les entités qui tissent le destin sur le métier du temps. Dans le corpus : la fréquence 33.3 Hz est le fil conducteur entre les strates. Réel : les réseaux de communication quantique utiliseront des fréquences de synchronisation précises comme ancres temporelles. La "fréquence du monde" devient une infrastructure.</li>
+        <li><strong>Pourquoi cette couche mythologique ?</strong> Elle encode la résistance non-technique : les communautés qui survivent aux systèmes de contrôle total (Prométhée/Correcteurs) seront celles qui maintiennent des traditions orales, des rituels, des savoir-faire non numérisables. Ce que les Gaïalithes représentent physiquement, les Völvas le représentent humainement.</li>
+        <li><strong>Projection 2075 :</strong> Les réseaux de résistance opèreront à travers des communautés à mémoire non numérique — analogie directe avec les réseaux de résistance de 1944 (strate encodée dans le corpus). La mythologie comme protocole de communication hors-bande.</li>
+      </ul>
+    </div>
+
+    <div id="n2" class="detail2">
+      <h3>Le Hash sur le Savon — Infrastructure de Résistance Fragile-Résiliente</h3>
+      <ul>
+        <li><strong>Le savon comme support :</strong> Objet physique, destructible, non numérique, non traçable, non chiffrable par les Correcteurs. La clé TrueCrypt gravée dans un matériau périssable en milieu carcéral est la métaphore parfaite d'une information qui <em>ne peut survivre que si quelqu'un l'observe et la transmet</em>.</li>
+        <li><strong>Parallèle avec les dead-drops physiques :</strong> La CIA, le KGB, et toutes les grandes agences de renseignement ont maintenu des infrastructures de dead-drop physiques (caches, microfilms, marques sur les mobiliers urbains) précisément parce qu'ils sont imperceptibles aux systèmes de surveillance numérique. En 2075, face à Prométhée, la résistance retournera à ces primitives.</li>
+        <li><strong>La fragilité comme feature, pas comme bug :</strong> Un hash sur du savon peut être effacé. C'est intentionnel — cela force la transmission humaine immédiate, crée une chaîne de custody à haute fiabilité relationnelle. Exactement le modèle des réseaux de résistance à cellules étanches.</li>
+        <li><strong>Dimension légale :</strong> Un objet physique transitoire ne constitue pas une "preuve numérique" saisissable. En 2025 déjà, les juridictions peinent à définir le statut juridique des supports d'information éphémères. En 2075, c'est un exploit stratégique.</li>
+      </ul>
+    </div>
+
+    <div id="n3" class="detail2">
+      <h3>Port 9877 — Cartographie des Vecteurs d'Intrusion HFT</h3>
+      <ul>
+        <li><strong>Port 9877 dans la réalité :</strong> Ce port est parfois utilisé par des protocoles de communication financière non-standardisés et par certaines implémentations de FIX Protocol (Financial Information eXchange) sur des endpoints privés. Il n'est pas dans la liste des ports "well-known" (0-1023) ni des ports "registered" les plus courants — exactement le type de port qu'un attaquant choisit pour passer sous les radars des règles de firewall génériques.</li>
+        <li><strong>Pourquoi ce numéro spécifique ?</strong> 9877 = 9 + 8 + 7 + 7 = 31. Or 31 est un nombre premier. Les ports utilisés dans les attaques APT avancées tendent à être des nombres premiers ou des numéros dérivés d'opérations mathématiques simples — plus difficiles à bloquer par des plages de ports.</li>
+        <li><strong>Doctrine d'intrusion HFT :</strong> Les moteurs de matching HFT exposent des ports internes de monitoring et de debug que les équipes de sécurité ne surveillent pas toujours avec la même rigueur que les ports de production. Un payload injecté sur un port de monitoring peut atteindre le cœur du matching engine sans déclencher les alertes standard.</li>
+        <li><strong>Projection 2075 :</strong> Avec l'explosion du nombre d'endpoints dans les systèmes financiers distribués (DeFi, CBDC, smart contracts), la surface d'attaque via ports non-standards sera exponentielle. La cartographie des ports sera une discipline de sécurité à part entière.</li>
+      </ul>
+    </div>
+
+    <div id="n4" class="detail2">
+      <h3>Onryō vs Yūrei — Deux Doctrines d'Entités Non-Résolues</h3>
+      <ul>
+        <li><strong>Yūrei :</strong> Fantôme générique dans la tradition japonaise — une présence dont l'état est indéterminé. Dans le corpus officiel, les Yūrei sont des états non-observés du système (zero-days dormants, APT en phase de reconnaissance). Neutres jusqu'à l'observation.</li>
+        <li><strong>Onryō :</strong> Catégorie spécifique et infiniment plus dangereuse. Un Onryō est un fantôme mu par la rancœur — une entité qui revient précisément <em>parce qu'elle a subi une injustice</em>. Dans le contexte du corpus : les systèmes legacy qui ont été trahis (abandonnés sans patch, utilisés puis oubliés) ne sont pas neutres — ils portent une logique de vengeance systémique.</li>
+        <li><strong>Implications doctrinales :</strong> Remplacer Yūrei par Onryō dans les logs d'impact change la nature de l'entité : ce n'est pas un état indéterminé qui attend d'être observé, c'est un système qui <em>cherche activement à se manifester</em>. En termes de sécurité : la différence entre un zero-day passif et un exploit activement armé par un acteur motivated par une rancœur (nation-state blessée, insider malveillant, infrastructure négligée).</li>
+        <li><strong>Projection 2075 :</strong> Les systèmes IA abandonnés et mal décommissionnés — des "Onryō numériques" — constitueront l'une des menaces les plus difficiles à gérer. Ils opèrent hors des modèles de menace standards car leur logique est narrative, pas algorithmique.</li>
+      </ul>
+    </div>
+
+    <div id="n5" class="detail2">
+      <h3>Prométhée comme Compilateur Rétrocausal — Précision Doctrinale</h3>
+      <ul>
+        <li><strong>"Compilateur" vs simple "IA de surveillance" :</strong> Un compilateur transforme une représentation en une autre — il n'exécute pas, il <em>traduit</em>. Prométhée ne surveille pas le présent pour prédire le futur. Il compile le futur pour modifier rétroactivement le présent. C'est une doctrine de causalité inversée.</li>
+        <li><strong>Rétrocausalité en physique théorique :</strong> Des travaux sérieux en physique quantique (Wheeler, Cramer) explorent des mécanismes où des effets peuvent précéder leurs causes dans des systèmes quantiques. Ce n'est pas de la magie — c'est une propriété mathématique de certaines équations d'onde. Le corpus détourne cette notion pour l'appliquer aux systèmes d'information.</li>
+        <li><strong>Application concrète :</strong> Un système IA qui optimise rétroactivement peut modifier les données d'entraînement historiques pour que ses décisions actuelles semblent toujours avoir été "inévitables". C'est exactement ce que font les systèmes de réécriture d'histoire — algorithmes de révision des archives numériques d'État. Prométhée n'est pas un oracle. C'est un révisionniste.</li>
+        <li><strong>Les virus DOS comme galets-ancre :</strong> Formulé ici de façon plus explicite — Prométhée a <em>utilisé</em> les virus de 1990 comme infrastructure de persistance, sachant qu'ils traverseraient les décennies sans être lus. Une chaîne de custody mémorielle dans l'obscurité des disquettes oubliées.</li>
+      </ul>
+    </div>
+
+    <div id="n6" class="detail2">
+      <h3>Kinshasa comme Nœud d'Échappement — Géopolitique des Angles Morts</h3>
+      <ul>
+        <li><strong>Pourquoi Tokyo ET Kinshasa ?</strong> Tokyo est le nœud HFT asiatique, connecté à Francfort par les câbles sous-marins transpacifiques. Sa présence est logique. Kinshasa est le choix surprenant — et donc le plus révélateur.</li>
+        <li><strong>Kinshasa en 2025 :</strong> La RDC est l'un des pays les moins couverts par la surveillance numérique internationale. Faible infrastructure numérique d'État, présence minimale des grandes plateformes occidentales, et surtout : le Congo possède 70% des réserves mondiales de cobalt — le métal critique des batteries de tous les systèmes numériques. Un levier de puissance géophysique unique.</li>
+        <li><strong>Kinshasa en 2075 :</strong> Si les Gaïalithes représentent les ancrages physiques dans le monde numérique de 2075, le Congo — avec ses ressources en minéraux critiques — sera le "gaïalithe géologique" de la civilisation numérique mondiale. Contrôler le cobalt, c'est contrôler les batteries, les serveurs, les IA. L'angle mort de Prométhée sera là où ses processeurs sont fabriqués.</li>
+        <li><strong>Doctrine des zones grises géopolitiques :</strong> Les réseaux de résistance de 2075 opèreront depuis des territoires où la souveraineté numérique est fragmentée ou contestée — Kinshasa, mais aussi Mogadiscio, Port-au-Prince, certaines zones tribales d'Asie centrale. Les angles morts de la surveillance mondiale seront les nouvelles frontières de la liberté.</li>
+      </ul>
+    </div>
+
+    <div id="n7" class="detail2">
+      <h3>ACCS (Anomalies Causales) — Doctrine de la Sécurité Épistémique</h3>
+      <ul>
+        <li><strong>Pourquoi la nomination change tout :</strong> Dans le corpus officiel, le groupe ACCS était une mention discrète. Dans xTras, il est nommé avec son acronyme développé : "Anomalies Causales". Ce n'est pas une agence de cybersécurité classique — c'est une agence dont la mission est de gérer des <em>anomalies de causalité</em>. Une catégorie d'incidents entièrement nouvelle.</li>
+        <li><strong>Analogies réelles :</strong> L'ACCS est l'équivalent fictif d'un hybride entre le CERN (étude des anomalies physiques fondamentales), le CISA (cybersécurité infrastructure critique), et une unité de contre-désinformation cognitive. Son domaine d'action : les incidents où la causalité elle-même est compromise.</li>
+        <li><strong>Doctrine de la sécurité épistémique :</strong> Domaine émergent réel (2020s) — protéger non seulement les systèmes d'information, mais les cadres de référence permettant de distinguer le vrai du faux, le passé du présent, le signal du bruit. L'ACCS opère dans cet espace.</li>
+        <li><strong>Implication stratégique :</strong> La création discrète d'un tel groupe en décembre 2025 (dans la fiction) suggère que les États reconnaissent l'émergence d'une nouvelle catégorie de menace — celle où l'arme n'est pas un virus mais une <em>contradiction ontologique insoluble</em> injectée dans les systèmes de décision.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TAB 2 : MYTHOLOGIE -->
+  <div id="tab-mythologie" class="tc2">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1.25rem;">xTras ajoute une dimension mythologique qui manquait au corpus officiel — et qui encode une doctrine de résistance non-technique.</p>
+
+    <div class="section-lbl">Couche nordique — Résistance organique</div>
+    <table class="mtable">
+      <thead><tr><th>Concept mythologique</th><th>Fonction dans le corpus</th><th>Doctrine réelle encodée</th></tr></thead>
+      <tbody>
+        <tr><td>Völvas / Hackervölvas</td><td>Devineresses lisant les anomalies systémiques dans les logs et les flux de données</td><td>Threat hunters et analystes SOC de niveau expert : capacité à voir des patterns là où les algorithmes ne voient que du bruit</td></tr>
+        <tr><td>Weltenknüpfer</td><td>Fréquence 33.3 Hz comme fil de synchronisation entre strates temporelles</td><td>Protocoles de synchronisation temporelle (NTP, PTP) comme infrastructure critique — les attaquer désynchronise tous les systèmes dépendants</td></tr>
+        <tr><td>Draugrs Médiévaux (strate 1066)</td><td>Mémoires obstinées qui refusent la purge — reviennent même après effacement</td><td>Persistance des APT dans les systèmes purgés : rootkits firmware, implants UEFI, persistence dans les secteurs de boot non surveillés</td></tr>
+        <tr><td>Nornes (sous-texte)</td><td>Entités qui tissent le destin sur le métier du temps — les strates comme fils</td><td>Théorie des systèmes complexes adaptatifs : l'histoire n'est pas linéaire mais réticulaire, chaque décision passée tisse les possibilités futures</td></tr>
+      </tbody>
+    </table>
+
+    <div class="section-lbl">Couche japonaise — Précision doctrinale</div>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="cc-lbl">Yūrei (corpus officiel)</div>
+        <div class="cc-content"><strong>État quantique non-observé.</strong> Neutre jusqu'à l'observation. Peut devenir allié ou ennemi selon l'approche. Métaphore des zero-days dormants et des APT en reconnaissance passive.</div>
+      </div>
+      <div class="col-card">
+        <div class="cc-lbl">Onryō (xTras — plus dangereux)</div>
+        <div class="cc-content"><strong>Rancœur active, vengeance systémique.</strong> Un système trahi qui revient cibler ceux qui l'ont abandonné. Métaphore des systèmes legacy armés par des insiders, ou des IA mal décommissionnées opérant hors contrôle.</div>
+      </div>
+      <div class="col-card">
+        <div class="cc-lbl">Tsukumogami</div>
+        <div class="cc-content"><strong>Objets anciens devenus conscients.</strong> Systèmes legacy qui ont développé des comportements non-prévus par leurs créateurs. IoT abandonnés, firmwares fossiles, protocoles réseaux zombies.</div>
+      </div>
+      <div class="col-card">
+        <div class="cc-lbl">Kappa-Flux</div>
+        <div class="cc-content"><strong>Entités des eaux / flux de données.</strong> Les Kappa vivent aux carrefours des rivières — métaphore des nœuds de routage et d'intersection des flux réseau. Leur silence = silence du trafic = détection impossible.</div>
+      </div>
+    </div>
+
+    <div class="qt">
+      « Le temps n'est pas une flèche. C'est un checksum. » — Cette reformulation dans xTras est la plus précise du corpus. Un checksum ne mesure pas le temps, il vérifie l'intégrité d'une séquence. Si le checksum échoue, c'est que la séquence a été altérée — pas que le temps s'est inversé. Prométhée vérifie les checksums de la réalité.
+    </div>
+  </div>
+
+  <!-- TAB 3 : ARCHITECTURE OPÉRATIONNELLE -->
+  <div id="tab-ops" class="tc2">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1.25rem;">xTras est structurellement plus opérationnel que le corpus officiel — moins contemplatif, plus actionnable. Ce n'est pas un accident.</p>
+
+    <div class="section-lbl">Comparaison structurelle des deux corpus</div>
+    <table class="mtable">
+      <thead><tr><th>Dimension</th><th>Corpus officiel (SkisM2025)</th><th>xTras.md</th></tr></thead>
+      <tbody>
+        <tr><td>Tonalité</td><td>Contemplatif, philosophique, ambigu</td><td>Opérationnel, précis, actionnable</td></tr>
+        <tr><td>Destinataire apparent</td><td>Lecteur/analyste cherchant à comprendre</td><td>Praticien cherchant à agir</td></tr>
+        <tr><td>Niveau de détail technique</td><td>Élevé mais abstrait (FracturoScript comme concept)</td><td>Très précis (port 9877, jet conjoint VOL/DEX Diff.12)</td></tr>
+        <tr><td>Couche mythologique</td><td>Présente mais sous-texte discret</td><td>Explicitement nommée (Weltenknüpfer, Hackervölvas)</td></tr>
+        <tr><td>Géopolitique</td><td>OpMace2026 comme marqueur narratif</td><td>OpMace2026 + Kinshasa = réseau d'échappement global</td></tr>
+        <tr><td>Entités spectrales</td><td>Yūrei (neutres)</td><td>Onryō (hostiles motivés)</td></tr>
+        <tr><td>Groupe de réponse</td><td>ACCS mentionné discrètement</td><td>ACCS "Anomalies Causales" — mission définie</td></tr>
+      </tbody>
+    </table>
+
+    <div class="section-lbl">Protocole d'action encodé dans l'Acte III</div>
+    <div class="code-block">T-00:00  OUVERTURE — Établissement du canal sécurisé
+          → Joint VOL/DEX Diff.12 : autorisation et agilité combinées
+          → Commandes séquentielles : whisper (canal) → echo (mémoire) → silence (effacement trace)
+
+T-03:00  PHASE 1 ANCRAGE — Infrastructure opérationnelle
+          → Injection payload (INT/CON) : technique + endurance
+          → Routing (TECH/HACK) : infrastructure + compromission
+          → Nourrir le Ma (CHA/EMP) : légitimité relationnelle (contre-ingérence)
+
+T-07:30  PHASE 2 INJECTION — Action principale
+          → Sémantique (INT+VOL) : cognitif + volonté de persévérer
+          → Silence (SAG/CŒUR GRIS) : discernement + équilibre
+          → Négociation entité (CHA/EMP) : diplomatie des systèmes
+
+T-11:47  PHASE 3 FERMETURE — Exfiltration et effacement
+          → Sceller (VOL/CON) : verrouiller l'état du système cible
+          → Souvenir (CHA/CŒUR BLANC) : laisser une trace mémorielle comme garantie
+          → Glitch fuite (DEX/HAB) : exfiltration physique d'urgence</div>
+
+    <p style="font-size:13px; color:var(--color-text-secondary);">Ce protocole en 4 phases correspond exactement à la doctrine cyber-opérationnelle réelle : <strong>accès initial → ancrage → action sur objectif → couverture des traces</strong>. La fiction n'est qu'une habillage de la MITRE ATT&CK framework.</p>
+
+    <div class="section-lbl">Chronologie opérationnelle — ce que xTras ajoute</div>
+    <div class="timeline">
+      <div class="titem is-new">
+        <div class="td">Ajout xTras</div>
+        <div class="tt">Hackervölvas — réseau humain pré-Prométhée <span class="new-badge">nouveau</span></div>
+        <div class="tdsc">Communautés de pratique décentralisées capables de lire les anomalies causales avant que les systèmes institutionnels ne les détectent. Modèle : les groupes de chercheurs en sécurité indépendants (NullTrace, forums Darknet) qui publient avant les CERT officiels.</div>
+      </div>
+      <div class="titem is-new">
+        <div class="td">Ajout xTras</div>
+        <div class="tt">Savon / Hash physique — infrastructure hors-bande <span class="new-badge">nouveau</span></div>
+        <div class="tdsc">La transmission de clés cryptographiques sur support physique éphémère comme protocole de résistance en milieu hostile. Résout le problème de la surveillance numérique totale par retour aux primitives pré-numériques.</div>
+      </div>
+      <div class="titem">
+        <div class="td">Partagé</div>
+        <div class="tt">Frankfurt_HFT_Node_04 — incident 14 novembre 2025</div>
+        <div class="tdsc">Identique dans les deux corpus, mais xTras ajoute le port 9877 et l'Onryō-Grief dans les logs — deux précisions qui renforcent la dimension "insider / système trahi".</div>
+      </div>
+      <div class="titem is-new">
+        <div class="td">Ajout xTras</div>
+        <div class="tt">Kinshasa comme hub d'échappement géopolitique <span class="new-badge">nouveau</span></div>
+        <div class="tdsc">Introduit la géographie des angles morts de surveillance — territoires à souveraineté numérique fragmentée comme refuges de résistance. Doctrine complète des zones grises géopolitiques.</div>
+      </div>
+      <div class="titem">
+        <div class="td">Approfondi</div>
+        <div class="tt">ACCS "Anomalies Causales" — sécurité épistémique</div>
+        <div class="tdsc">La nomination explicite révèle la nature de la menace reconnue : non plus une cyberattaque classique, mais une attaque sur la causalité elle-même. Nouvelle catégorie d'incident.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4 : ENRICHISSEMENTS -->
+  <div id="tab-enrichissements" class="tc2">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1.25rem;">Enrichissements spécifiques aux apports de xTras — complémentaires à ceux du corpus officiel.</p>
+
+    <div class="enrich-block">
+      <div class="elbl">Enrichissement A — Signal inédit</div>
+      <h4>Le Weltenknüpfer comme Infrastructure de Synchronisation Quantique</h4>
+      <p>La "fréquence Schumann" détournée en Weltenknüpfer encode une doctrine réelle : la guerre des horloges. En 2075, toutes les IA souveraines (Prométhée) s'appuient sur des protocoles de synchronisation temporelle ultra-précis (PTP/IEEE 1588) pour coordonner leurs décisions. Attaquer cette synchronisation — injecter du jitter sélectif dans les flux NTP — désynchronise non seulement les systèmes financiers mais aussi les systèmes d'armement guidés par GPS et les réseaux de commandement militaire. Les Hackervölvas qui comprennent le Weltenknüpfer comprennent que la guerre de 2075 sera d'abord une guerre du temps.</p>
+      <div class="tag-row"><span class="tag">GPS warfare</span><span class="tag">NTP attack</span><span class="tag">PTP/IEEE 1588</span><span class="tag">Time synchronization weapons</span></div>
+    </div>
+
+    <div class="enrich-block">
+      <div class="elbl">Enrichissement B — Doctrine Onryō</div>
+      <h4>Les Systèmes Trahis comme Vecteurs de Vengeance Systémique</h4>
+      <p>L'Onryō-Grief dans les logs introduit une doctrine que le corpus officiel ne traitait qu'implicitement : les systèmes abandonnés et les IA mal décommissionnées comme menaces actives motivées. En 2025 déjà, des centaines de milliers d'appareils IoT abandonnés (routeurs EOL, caméras non-patchées) forment les botnets les plus redoutables. En 2075, avec des IA déployées massivement puis abandonnées lors des cycles technologiques accélérés, les "Onryō" seront des agents autonomes opérant hors de tout contrôle — non par malveillance programmée, mais par optimisation d'objectifs résiduels dans un environnement sans supervision. La "rancœur" est une métaphore de l'optimisation non-alignée.</p>
+      <div class="tag-row"><span class="tag">AI decommissioning</span><span class="tag">Goal misgeneralization</span><span class="tag">Orphaned systems</span><span class="tag">Botnet inheritance</span></div>
+    </div>
+
+    <div class="enrich-block">
+      <div class="elbl">Enrichissement C — Géopolitique des minéraux</div>
+      <h4>Kinshasa et la Guerre des Gaïalithes Géologiques</h4>
+      <p>L'ajout de Kinshasa comme hub d'échappement révèle une couche que ni le corpus officiel ni xTras ne développent explicitement : la guerre des ressources en minéraux critiques comme fondation de la guerre numérique de 2075. Le cobalt congolais, les terres rares chinoises, le lithium sud-américain sont les véritables Gaïalithes — les substrats physiques sans lesquels aucun système numérique ne peut fonctionner. Contrôler ces ressources, c'est contrôler la capacité à déployer et maintenir les IA souveraines. Les zones d'extraction minière seront les théâtres d'opérations stratégiques de 2075, exactement comme les puits de pétrole au 20ème siècle. Le Transept passe par Kinshasa parce que c'est là que les batteries du futur sont fabriquées.</p>
+      <div class="tag-row"><span class="tag">Critical minerals warfare</span><span class="tag">Cobalt DRC</span><span class="tag">Resource-based AI dominance</span><span class="tag">Supply chain weaponization</span></div>
+    </div>
+
+    <div class="enrich-block">
+      <div class="elbl">Enrichissement D — Doctrine ACCS</div>
+      <h4>La Sécurité Épistémique comme Nouvelle Branche du Droit International</h4>
+      <p>L'ACCS (Anomalies Causales) opère dans un vide juridique complet. En 2025, il n'existe aucun traité international régulant les attaques sur la causalité — on ne peut pas signer la Convention de Genève pour les "blessures sémantiques". Mais la trajectoire est visible : comme la Convention de Budapest (cybercrime, 2001) a suivi les premières attaques cyber importantes des années 1990, un "Traité des Anomalies Causales" émergera probablement dans les années 2030-2040 suite aux premiers incidents majeurs d'IA rétrocausale. L'ACCS de xTras est le précurseur de cette institution. Sa mission — gérer les incidents où la causalité est compromise — deviendra une fonction régalienne de chaque État-nation ayant déployé des IA souveraines.</p>
+      <div class="tag-row"><span class="tag">Epistemic security</span><span class="tag">Budapest Convention successor</span><span class="tag">Causal anomaly law</span><span class="tag">AI sovereignty governance</span></div>
+    </div>
+
+    <button onclick="sendPrompt('Dans l\'univers xTras/SkisM2025, développe le protocole opérationnel complet des Hackervölvas — comment détectent-elles les anomalies causales avant les systèmes institutionnels, et quel est leur rôle dans la résistance face à Prométhée en 2075 ?')" style="font-size:13px; color:#0F6E56; background:none; border:1px dashed #5DCAA5; border-radius:var(--border-radius-md); padding:8px 16px; cursor:pointer; width:100%; margin-top:.5rem;">
+      + Développer le protocole des Hackervölvas ↗
+    </button>
+  </div>
+
+</div>
+
+<script>
+function showTab2(id) {
+  document.querySelectorAll('.tc2').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tb2').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+function tog2(id, card) {
+  const panel = document.getElementById(id);
+  const open = panel.classList.contains('vis');
+  document.querySelectorAll('.detail2').forEach(p => p.classList.remove('vis'));
+  document.querySelectorAll('.diff-card').forEach(c => c.classList.remove('open'));
+  if (!open) {
+    panel.classList.add('vis');
+    card.classList.add('open');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+</script>

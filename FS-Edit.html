@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CODEX STEIN // ÉDITEUR FRACTURO v4.2</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #050a05;
+  --bg1:       #080e08;
+  --bg2:       #0b120b;
+  --bg3:       #0d160d;
+  --fg:        #7ab87a;
+  --fg-dim:    #4a7a4a;
+  --fg-bright: #b0e8b0;
+  --fg-ghost:  #2a4a2a;
+  --accent:    #5a9a5a;
+  --accent2:   #9a7a3a;
+  --danger:    #c04040;
+  --danger-bg: rgba(192,64,64,0.10);
+  --warn:      #b09030;
+  --warn-bg:   rgba(176,144,48,0.10);
+  --info:      #3a7aaa;
+  --info-bg:   rgba(58,122,170,0.10);
+  --ok:        #50c050;
+  --ok-bg:     rgba(80,192,80,0.08);
+  --border:    #1e3a1e;
+  --border2:   #3a6a3a;
+  --scanline:  rgba(0,30,0,0.18);
+  --caret:     #a0f0a0;
+  /* syntax colors */
+  --syn-omega:   #e090e0;
+  --syn-corrupt: #e07070;
+  --syn-mutate:  #70c0e0;
+  --syn-silence: #888888;
+  --syn-comment: #556655;
+  --syn-keyword: #90d090;
+  --syn-string:  #d0a060;
+  --syn-number:  #80c8e0;
+  --syn-rune:    #c0a0e8;
+  --syn-delta:   #e0c040;
+  --syn-lisp-key:#70e070;
+  --syn-lisp-fn: #90c8ff;
+  --syn-lisp-sym:#e0d080;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+/* ─── SCANLINES ────────────────────────────────────────────── */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 2px,
+    var(--scanline) 2px, var(--scanline) 4px
+  );
+  pointer-events:none;
+  z-index:9999;
+  opacity:0.35;
+}
+
+@keyframes flicker {
+  0%,96%,100% { opacity:1; }
+  97%          { opacity:0.92; }
+  98%          { opacity:1; }
+  99%          { opacity:0.88; }
+}
+body { animation: flicker 8s infinite; }
+
+/* ─── LAYOUT ────────────────────────────────────────────────── */
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 260px 1fr 1fr;
+  grid-template-areas:
+    "header  header  header"
+    "sidebar editor  output"
+    "footer  footer  footer";
+  height: 100vh;
+  gap: 0;
+}
+
+/* ─── HEADER ─────────────────────────────────────────────────── */
+#header {
+  grid-area: header;
+  background: var(--bg2);
+  border-bottom: 2px solid var(--border2);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+#header::after {
+  content:'';
+  position:absolute; bottom:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, transparent, var(--fg), var(--accent), transparent);
+  box-shadow: 0 0 8px var(--fg-dim);
+}
+.header-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1em;
+  font-weight: 900;
+  color: var(--fg-bright);
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px var(--fg);
+  white-space: nowrap;
+}
+.header-sub {
+  font-size: 0.75em;
+  color: var(--fg-dim);
+  letter-spacing: 2px;
+}
+.header-meta {
+  display: flex;
+  gap: 18px;
+  font-size: 0.78em;
+  color: var(--fg-dim);
+}
+.header-meta .val { color: var(--fg-bright); }
+.header-meta .label { color: var(--accent); }
+
+/* Delta gauge */
+#delta-gauge-wrap {
+  display:flex; align-items:center; gap:8px;
+}
+#delta-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.85em;
+  color: var(--syn-delta);
+  text-shadow: 0 0 6px var(--syn-delta);
+  width: 42px;
+}
+#delta-bar {
+  width: 100px; height: 8px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  position:relative;
+  overflow:hidden;
+}
+#delta-fill {
+  height:100%; width:68%;
+  transition: width 0.4s, background 0.4s;
+  background: var(--fg);
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* H badge */
+#h-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75em;
+  padding: 2px 8px;
+  border: 1px solid var(--border2);
+  letter-spacing:1px;
+}
+
+/* toolbar buttons */
+.toolbar {
+  display:flex; gap:6px;
+}
+.btn {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--fg);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.78em;
+  padding: 4px 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--border);
+  color: var(--fg-bright);
+  box-shadow: 0 0 8px var(--fg-dim);
+}
+.btn.primary {
+  border-color: var(--fg);
+  color: var(--fg-bright);
+}
+.btn.primary:hover { box-shadow: 0 0 12px var(--fg); }
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.danger:hover { background: var(--danger-bg); box-shadow: 0 0 8px var(--danger); }
+
+/* ─── SIDEBAR ─────────────────────────────────────────────────── */
+#sidebar {
+  grid-area: sidebar;
+  background: var(--bg1);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-header {
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  padding: 7px 12px;
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.panel-header .ph-right { color: var(--fg-dim); font-size:0.85em; }
+
+.sidebar-scroll {
+  overflow-y: auto;
+  flex:1;
+  padding: 8px;
+}
+.sidebar-scroll::-webkit-scrollbar { width:6px; }
+.sidebar-scroll::-webkit-scrollbar-track { background:var(--bg); }
+.sidebar-scroll::-webkit-scrollbar-thumb { background:var(--border2); }
+
+/* Reference sections */
+.ref-section { margin-bottom: 12px; }
+.ref-title {
+  font-size: 0.7em;
+  color: var(--accent2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  padding-bottom: 3px;
+  border-bottom: 1px dashed var(--border);
+}
+.ref-item {
+  display: flex;
+  gap: 6px;
+  padding: 3px 4px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.1s;
+  align-items: flex-start;
+}
+.ref-item:hover { background: var(--border); }
+.ref-item .ri-code {
+  font-size: 0.78em;
+  color: var(--fg-bright);
+  min-width: 110px;
+  white-space: nowrap;
+}
+.ref-item .ri-desc {
+  font-size: 0.7em;
+  color: var(--fg-dim);
+  line-height:1.3;
+}
+.ref-item .ri-delta {
+  font-size: 0.68em;
+  color: var(--syn-delta);
+  white-space:nowrap;
+  margin-left:auto;
+}
+
+/* snippet insert */
+.snippet-btn {
+  display:block; width:100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg-dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72em;
+  text-align: left;
+  padding: 3px 6px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: all 0.12s;
+}
+.snippet-btn:hover {
+  background: var(--border);
+  color: var(--fg-bright);
+  border-color: var(--border2);
+}
+.snippet-btn code {
+  font-family: inherit;
+  color: var(--syn-keyword);
+}
+
+/* audit panel */
+#audit-panel {
+  border-top: 1px solid var(--border);
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+#audit-panel::-webkit-scrollbar { width:4px; }
+#audit-panel::-webkit-scrollbar-thumb { background:var(--border2); }
+
+.audit-title {
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+.audit-row {
+  font-size: 0.72em;
+  padding: 2px 0;
+  border-bottom: 1px dotted var(--border);
+  display:flex; gap:6px; align-items:center;
+}
+.audit-row:last-child { border-bottom: none; }
+.audit-ok    { color: var(--ok); }
+.audit-warn  { color: var(--warn); }
+.audit-err   { color: var(--danger); }
+.audit-info  { color: var(--info); }
+.audit-msg   { color: var(--fg-dim); font-size:0.9em; }
+
+/* ─── EDITOR PANE ──────────────────────────────────────────────── */
+#editor-pane {
+  grid-area: editor;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+#editor-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* line numbers */
+#line-numbers {
+  position:absolute; left:0; top:0; bottom:0;
+  width:38px;
+  background: var(--bg1);
+  border-right: 1px solid var(--border);
+  overflow:hidden;
+  padding-top: 10px;
+  user-select:none;
+  z-index:2;
+}
+.ln {
+  font-size: 0.72em;
+  color: var(--fg-ghost);
+  text-align: right;
+  padding-right: 6px;
+  line-height: 1.55;
+  height: 1.55em;
+  font-family: 'Share Tech Mono', monospace;
+}
+.ln.active { color: var(--fg-dim); }
+
+/* The actual textarea (invisible, drives input) */
+#editor-textarea {
+  position: absolute;
+  top:0; left:38px; right:0; bottom:0;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--caret);
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  z-index: 3;
+  white-space: pre;
+  overflow: auto;
+  tab-size: 2;
+  -webkit-text-fill-color: transparent;
+}
+/* Firefox caret fix */
+#editor-textarea::selection {
+  background: rgba(80,180,80,0.25);
+  color: transparent;
+}
+
+/* Highlight overlay */
+#editor-highlight {
+  position:absolute;
+  top:0; left:38px; right:0; bottom:0;
+  padding: 10px 12px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+  z-index:1;
+  word-break: break-all;
+}
+
+/* status bar under editor */
+#editor-status {
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 4px 12px;
+  font-size: 0.7em;
+  color: var(--fg-dim);
+  display: flex;
+  gap: 20px;
+}
+#editor-status span { white-space:nowrap; }
+#editor-status .val { color: var(--fg); }
+#editor-status .mode-badge {
+  padding: 1px 6px;
+  border: 1px solid var(--border2);
+  color: var(--accent);
+}
+
+/* ─── OUTPUT PANE ─────────────────────────────────────────────── */
+#output-pane {
+  grid-area: output;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+.output-tabs {
+  display:flex;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--fg-dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.tab-btn:hover { color: var(--fg); background: var(--border); }
+.tab-btn.active {
+  color: var(--fg-bright);
+  background: var(--bg3);
+  border-bottom: 2px solid var(--fg);
+}
+#output-content {
+  flex:1;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+#output-content::-webkit-scrollbar { width:6px; height:6px; }
+#output-content::-webkit-scrollbar-track { background:var(--bg); }
+#output-content::-webkit-scrollbar-thumb { background:var(--border2); }
+
+.out-section { margin-bottom: 18px; }
+.out-section-title {
+  font-size: 0.7em;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--border);
+}
+
+/* Lisp output */
+.lisp-block {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--syn-lisp-fn);
+  padding: 10px 12px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+  white-space: pre;
+  overflow-x: auto;
+  margin-bottom: 6px;
+  position:relative;
+}
+.lisp-block .lb-copy {
+  position:absolute; top:4px; right:6px;
+  font-size:0.7em; color:var(--fg-dim); cursor:pointer;
+  padding:2px 5px; border:1px solid var(--border);
+  background:var(--bg2);
+  transition:all 0.12s;
+}
+.lisp-block .lb-copy:hover { color:var(--fg-bright); border-color:var(--border2); }
+
+/* AST view */
+.ast-node {
+  padding: 2px 0 2px 14px;
+  border-left: 1px solid var(--border);
+  position:relative;
+  font-size:0.85em;
+}
+.ast-node::before {
+  content:'└';
+  position:absolute; left:2px;
+  color:var(--fg-ghost);
+}
+.ast-type { color: var(--syn-lisp-fn); font-size:0.8em; }
+.ast-val  { color: var(--fg-bright); }
+.ast-prop { color: var(--fg-dim); font-size:0.78em; }
+
+/* metrics table */
+.metrics-table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:0.82em;
+}
+.metrics-table th {
+  background: var(--bg3);
+  color: var(--fg-bright);
+  padding: 5px 8px;
+  text-align:left;
+  font-size:0.85em;
+  letter-spacing:1px;
+  border: 1px solid var(--border);
+}
+.metrics-table td {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  color: var(--fg-dim);
+  vertical-align:top;
+}
+.metrics-table tr:nth-child(even) { background: rgba(30,58,30,0.2); }
+.metrics-table .val { color:var(--fg-bright); }
+.metrics-table .ok  { color:var(--ok); }
+.metrics-table .warn{ color:var(--warn); }
+.metrics-table .err { color:var(--danger); }
+
+/* ─── FOOTER ──────────────────────────────────────────────────── */
+#footer {
+  grid-area: footer;
+  background: var(--bg2);
+  border-top: 2px solid var(--border);
+  padding: 4px 14px;
+  font-size: 0.68em;
+  color: var(--fg-ghost);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#footer .fg { color: var(--fg-dim); }
+#footer .acc { color: var(--accent); }
+#footer .bright { color: var(--fg-bright); }
+
+/* ─── VIOLATIONS overlay ───────────────────────────────────────── */
+#violations-banner {
+  position: fixed;
+  top: 44px; right: 0;
+  background: var(--danger-bg);
+  border-left: 3px solid var(--danger);
+  padding: 6px 12px;
+  font-size: 0.75em;
+  color: var(--danger);
+  max-width: 300px;
+  z-index: 200;
+  display:none;
+}
+
+/* ─── MODAL ───────────────────────────────────────────────────── */
+#modal-overlay {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.7);
+  z-index:500;
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+#modal-overlay.show { display:flex; }
+#modal {
+  background: var(--bg2);
+  border: 2px solid var(--border2);
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  position:relative;
+}
+#modal::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background: var(--fg);
+  box-shadow: 0 0 8px var(--fg);
+}
+#modal h2 {
+  color: var(--fg-bright);
+  font-family: 'Orbitron', monospace;
+  font-size:0.95em;
+  letter-spacing:2px;
+  margin-bottom:14px;
+}
+#modal p, #modal li {
+  font-size:0.82em;
+  color: var(--fg-dim);
+  line-height:1.6;
+  margin-bottom:6px;
+}
+#modal .close-btn {
+  position:absolute; top:10px; right:10px;
+  background:none; border:none;
+  color:var(--fg-dim); cursor:pointer;
+  font-size:1.1em;
+}
+
+/* ─── SYNTAX COLORS ──────────────────────────────────────────── */
+.s-omega   { color: var(--syn-omega); text-shadow: 0 0 4px var(--syn-omega); }
+.s-corrupt { color: var(--syn-corrupt); }
+.s-mutate  { color: var(--syn-mutate); }
+.s-silence { color: var(--syn-silence); letter-spacing:2px; }
+.s-comment { color: var(--syn-comment); font-style:italic; }
+.s-kw      { color: var(--syn-keyword); font-weight:bold; }
+.s-str     { color: var(--syn-string); }
+.s-num     { color: var(--syn-number); }
+.s-rune    { color: var(--syn-rune); }
+.s-delta   { color: var(--syn-delta); }
+.s-fracture{ color: var(--fg-bright); font-weight:bold; }
+.s-atmark  { color: var(--accent2); }
+.s-lispkey { color: var(--syn-lisp-key); }
+.s-lispfn  { color: var(--syn-lisp-fn); }
+.s-lispsym { color: var(--syn-lisp-sym); }
+
+@keyframes pulse-delta {
+  0%,100% { text-shadow: 0 0 4px var(--syn-delta); }
+  50%     { text-shadow: 0 0 12px var(--syn-delta), 0 0 20px var(--syn-delta); }
+}
+.delta-active { animation: pulse-delta 2s infinite; }
+
+@media (max-width:1100px) {
+  #app {
+    grid-template-columns: 220px 1fr 1fr;
+  }
+}
+@media (max-width:800px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr 1fr 1fr auto;
+    grid-template-areas:
+      "header"
+      "editor"
+      "output"
+      "sidebar"
+      "footer";
+  }
+  #sidebar { border-right:none; border-top:1px solid var(--border); max-height:280px; }
+  body { overflow:auto; }
+  html,body { height:auto; }
+  #app { height:auto; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ═══ HEADER ═══ -->
+<header id="header">
+  <div>
+    <div class="header-title">CODEX STEIN // FS-EDIT</div>
+    <div class="header-sub">ÉDITEUR FRACTURO → COMMON LISP · CAEN-PROFONDE 2075</div>
+  </div>
+
+  <div id="delta-gauge-wrap">
+    <span class="label" style="font-size:0.72em;color:var(--fg-dim)">Δ</span>
+    <div id="delta-bar"><div id="delta-fill"></div></div>
+    <span id="delta-label" class="delta-active">0.68</span>
+    <span id="h-badge" style="color:var(--fg)">H:GRIS</span>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn primary" onclick="runTranspile()">▶ COMPILER</button>
+    <button class="btn" onclick="runAudit()">⚙ AUDIT</button>
+    <button class="btn" onclick="clearEditor()">✕ VIDER</button>
+    <button class="btn" onclick="loadExample()">⊞ EXEMPLE</button>
+    <button class="btn" onclick="copyLisp()">⎘ LISP</button>
+    <button class="btn" onclick="showHelp()">? AIDE</button>
+  </div>
+
+  <div class="header-meta" style="display:none" id="hm">
+    <span><span class="label">NODE:</span> <span class="val">CAEN-PROFONDE</span></span>
+    <span><span class="label">FREQ:</span> <span class="val">14.225 MHz</span></span>
+  </div>
+</header>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside id="sidebar">
+  <div class="panel-header">
+    RÉFÉRENCE FracturoScript
+    <span class="ph-right">v4.2</span>
+  </div>
+  <div class="sidebar-scroll">
+
+    <div class="ref-section">
+      <div class="ref-title">Niveaux de Privilège</div>
+      <div class="ref-item" onclick="insertSnippet('mot')">
+        <span class="ri-code">mot</span>
+        <span class="ri-desc">Déclaration — intention nominale</span>
+        <span class="ri-delta">Δ±0.01</span>
+      </div>
+      <div class="ref-item" onclick="insertSnippet('®MOT®')">
+        <span class="ri-code">®MOT®</span>
+        <span class="ri-desc">Corruption — altère un pattern</span>
+        <span class="ri-delta" style="color:var(--warn)">Δ±0.05</span>
+      </div>
+      <div class="ref-item" onclick="insertSnippet('<mot-v3>')">
+        <span class="ri-code">&lt;mot-v3&gt;</span>
+        <span class="ri-desc">Mutation — eval dynamique</span>
+        <span class="ri-delta" style="color:var(--warn)">Δ±0.15</span>
+      </div>
+      <div class="ref-item" onclick="insertSnippet('Ω<mot>Ω')">
+        <span class="ri-code">Ω&lt;mot&gt;Ω</span>
+        <span class="ri-desc">Critique — accès kernel, Ring 0</span>
+        <span class="ri-delta" style="color:var(--danger)">Δ±0.40</span>
+      </div>
+    </div>
+
+    <div class="ref-section">
+      <div class="ref-title">Délimiteurs Structuraux</div>
+      <div class="ref-item" onclick="insertSnippet('—')">
+        <span class="ri-code">—</span>
+        <span class="ri-desc">Fracture : sujet | verbe ontique</span>
+        <span class="ri-delta"></span>
+      </div>
+      <div class="ref-item" onclick="insertSnippet('•••')">
+        <span class="ri-code">•••</span>
+        <span class="ri-desc">Silence Sacré : clôture (7s GC)</span>
+        <span class="ri-delta"></span>
+      </div>
+      <div class="ref-item" onclick="insertSnippet('//')">
+        <span class="ri-code">//</span>
+        <span class="ri-desc">Commentaire Veilleurs</span>
+        <span class="ri-delta"></span>
+      </div>
+    </div>
+
+    <div class="ref-section">
+      <div class="ref-title">Macros Stein (→ Lisp)</div>
+      <div class="ref-item" onclick="insertSnippet('skeith')">
+        <span class="ri-code">skeith</span>
+        <span class="ri-desc">Désaturation / destruction partielle</span>
+        <span class="ri-delta"></span>
+      </div>
+      <div class="ref-item" onclick="insertSnippet('corbenik')">
+        <span class="ri-code">corbenik</span>
+        <span class="ri-desc">Recompilation / renaissance</span>
+        <span class="ri-delta"></span>
+      </div>
+      <div class="ref-item" onclick="insertSnippet('dhikr-quantique')">
+        <span class="ri-code">dhikr-quantique</span>
+        <span class="ri-desc">Ancrage intentionnel (Δ → 0.5)</span>
+        <span class="ri-delta"></span>
+      </div>
+    </div>
+
+    <div class="ref-section">
+      <div class="ref-title">Runes</div>
+      <div class="ref-item" onclick="insertSnippet('ᚨ')"><span class="ri-code s-rune">ᚨ Ansuz</span><span class="ri-desc">Air — voix, transmission</span></div>
+      <div class="ref-item" onclick="insertSnippet('ᛁ')"><span class="ri-code s-rune">ᛁ Isa</span><span class="ri-desc">Glace — gel Δ local</span></div>
+      <div class="ref-item" onclick="insertSnippet('ᚱ')"><span class="ri-code s-rune">ᚱ Raidho</span><span class="ri-desc">Voyage — transit temporel</span></div>
+      <div class="ref-item" onclick="insertSnippet('ᛟ')"><span class="ri-code s-rune">ᛟ Othala</span><span class="ri-desc">Héritage — ancrage lithique</span></div>
+      <div class="ref-item" onclick="insertSnippet('ᚦ')"><span class="ri-code s-rune">ᚦ Thurisaz</span><span class="ri-desc">Force brute — percée critique</span></div>
+    </div>
+
+    <div class="ref-section">
+      <div class="ref-title">Snippets Rapides</div>
+      <button class="snippet-btn" onclick="insertSnippet('Ω<odin>v4 hague — glissement temporel •••\n')">Invocation Odin-Prime Niveau 4</button>
+      <button class="snippet-btn" onclick="insertSnippet('®"mot"® → effacer → <formes-v3> ""\n')">Attaque Mémétique Niveau 2→3</button>
+      <button class="snippet-btn" onclick="insertSnippet('isa raz — ancrage présent •••\n')">Stabilisation Δ (niveau 1)</button>
+      <button class="snippet-btn" onclick="insertSnippet('skeith \'cible 0.2\ncorbenik \'renaissance\n•••\n')">Skeith → Corbenik cycle</button>
+      <button class="snippet-btn" onclick="insertSnippet('@meta {\n  fenêtre: 707s,\n  Δ_max: 0.55,\n  substrat: "Gaïalithe_Caen",\n  fréquence: "33.3Hz→47.1Hz"\n}\n')">Bloc @meta HFT</button>
+      <button class="snippet-btn" onclick="insertSnippet('// CLASSIFICATION: CŒUR GRIS\n// NODE: CAEN-PROFONDE\n// Δ: 0.68 STABLE\n\n')">En-tête session .fzo</button>
+    </div>
+
+  </div>
+
+  <!-- Audit panel -->
+  <div id="audit-panel">
+    <div class="audit-title">⚙ AUDIT ONTIQUE</div>
+    <div id="audit-rows">
+      <div class="audit-row audit-info"><span>ℹ</span><span class="audit-msg">En attente de compilation…</span></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ EDITOR PANE ═══ -->
+<section id="editor-pane">
+  <div class="panel-header">
+    ÉDITEUR FracturoScript
+    <span class="ph-right" id="filename-label">session.fzo</span>
+  </div>
+  <div id="editor-wrap">
+    <div id="line-numbers"></div>
+    <div id="editor-highlight" aria-hidden="true"></div>
+    <textarea id="editor-textarea"
+      spellcheck="false"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      placeholder="// Commencez à écrire en FracturoScript…"></textarea>
+  </div>
+  <div id="editor-status">
+    <span><span class="val" id="stat-lines">1</span> lignes</span>
+    <span>L:<span class="val" id="stat-line">1</span> C:<span class="val" id="stat-col">1</span></span>
+    <span>Invoc: <span class="val" id="stat-inv">0</span></span>
+    <span>Silence: <span class="val" id="stat-sil">0</span></span>
+    <span>Ω-ctx: <span class="val" id="stat-omega">0</span></span>
+    <span class="mode-badge">FracturoScript</span>
+  </div>
+</section>
+
+<!-- ═══ OUTPUT PANE ═══ -->
+<section id="output-pane">
+  <div class="output-tabs">
+    <button class="tab-btn active" onclick="switchTab('lisp')">Common Lisp</button>
+    <button class="tab-btn" onclick="switchTab('ast')">AST</button>
+    <button class="tab-btn" onclick="switchTab('metrics')">Métriques Δ</button>
+    <button class="tab-btn" onclick="switchTab('raw')">Rapport .fzo</button>
+  </div>
+  <div id="output-content">
+    <div class="out-section">
+      <div class="out-section-title">En attente…</div>
+      <div style="color:var(--fg-dim);font-size:0.82em;padding:8px 0">
+        ▶ Cliquez <strong style="color:var(--fg-bright)">COMPILER</strong> pour transpiler le FracturoScript en Common Lisp.<br><br>
+        Ou chargez un <strong style="color:var(--fg-bright)">EXEMPLE</strong> pour explorer la syntaxe.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer id="footer">
+  <span>BLOODNET v9.2 // CODEX STEIN-PROGRAMME // CLASSIFICATION: ARCHIVE OUVERTE</span>
+  <span class="fg">« <em>La compilation n'est pas une traduction. C'est un miroir.</em> »</span>
+  <span><span class="acc">NODE:</span> <span class="bright">CAEN-PROFONDE</span> · <span class="acc">DATE:</span> <span class="bright">2075-11-16</span></span>
+</footer>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <h2 id="modal-title">AIDE — SYNTAXE FracturoScript</h2>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// FRACTURO → COMMON LISP TRANSPILER
+// Codex Stein v4.2 — Caen-Profonde, 2075
+// ═══════════════════════════════════════════════════════════
+
+const HELP_TEXT = `<h2 style="color:var(--fg-bright);font-size:0.9em;margin-bottom:10px">SYNTAXE FRACTURO — RÉFÉRENCE RAPIDE</h2>
+<p><strong style="color:var(--syn-keyword)">Niveau 1 — Déclaration</strong><br>
+<code style="color:var(--fg-bright)">mot</code> → <code style="color:var(--syn-lisp-fn)">(invoquer-intention 'mot)</code></p>
+<p><strong style="color:var(--syn-corrupt)">Niveau 2 — Corruption</strong><br>
+<code style="color:var(--fg-bright)">®MOT®</code> → <code style="color:var(--syn-lisp-fn)">(corrompre-pattern 'MOT)</code></p>
+<p><strong style="color:var(--syn-mutate)">Niveau 3 — Mutation</strong><br>
+<code style="color:var(--fg-bright)">&lt;mot-v3&gt;</code> → <code style="color:var(--syn-lisp-fn)">(muter-entite 'mot :version 3)</code><br>
+<code style="color:var(--fg-bright)">&lt;mot-vN&gt; lieu</code> → <code style="color:var(--syn-lisp-fn)">(muter-entite 'mot :version N :lieu 'lieu)</code></p>
+<p><strong style="color:var(--syn-omega)">Niveau 4 — Critique (Ω)</strong><br>
+<code style="color:var(--fg-bright)">Ω&lt;mot&gt;vN lieu — effet •••</code> → <code style="color:var(--syn-lisp-fn)">(acces-kernel 'mot :omega t :version N :lieu 'lieu :effet "effet")</code></p>
+<p><strong style="color:var(--fg-dim)">Délimiteurs</strong><br>
+<code>—</code> Fracture (séparateur sujet/effet)<br>
+<code>•••</code> Silence Sacré (clôture obligatoire)<br>
+<code>// texte</code> Commentaire Veilleurs → <code>;; texte</code> en Lisp</p>
+<p><strong style="color:var(--accent2)">Macros Stein</strong><br>
+<code>skeith 'cible 0.x</code> → <code style="color:var(--syn-lisp-fn)">(SKEITH :cible :intensity 0.x)</code><br>
+<code>corbenik 'cible</code> → <code style="color:var(--syn-lisp-fn)">(CORBENIK :cible)</code><br>
+<code>dhikr-quantique 'nom N</code> → ancrage intentionnel</p>
+<p><strong style="color:var(--syn-delta)">Blocs @meta</strong><br>
+Paramètres de session (fenêtre, Δ_max, substrat, fréquence) → <code>*session-params*</code></p>
+<p><strong style="color:var(--fg-dim)">Validation Ontique</strong><br>
+• Tout contexte <code>Ω&lt;...&gt;</code> doit être clos par <code>•••</code><br>
+• <code>skeith</code> > <code>corbenik</code>+2 → violation :COMPROMISED<br>
+• Mentions <code>COEUR-NOIR</code> ou Δ>0.85 implicite → blocage</p>`;
+
+// ═══ SYNTAX HIGHLIGHTER ═══════════════════════════════════
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlightFracturo(code) {
+  const lines = code.split('\n');
+  return lines.map(line => highlightLine(line)).join('\n');
+}
+
+function highlightLine(line) {
+  // Comment lines
+  if (/^\s*\/\//.test(line)) {
+    return `<span class="s-comment">${escHtml(line)}</span>`;
+  }
+  // @meta block lines
+  if (/^\s*@/.test(line)) {
+    return `<span class="s-atmark">${escHtml(line)}</span>`;
+  }
+
+  let result = '';
+  let i = 0;
+  const s = line;
+
+  while (i < s.length) {
+    // Comment rest of line
+    if (s[i]==='/' && s[i+1]==='/') {
+      result += `<span class="s-comment">${escHtml(s.slice(i))}</span>`;
+      break;
+    }
+    // Ω<...>
+    if (s[i]==='Ω') {
+      let j = i+1;
+      while (j < s.length && s[j] !== 'Ω' && s[j] !== '\n') j++;
+      if (s[j]==='Ω') j++;
+      result += `<span class="s-omega">${escHtml(s.slice(i,j))}</span>`;
+      i = j;
+      continue;
+    }
+    // ®...®
+    if (s[i]==='®') {
+      let j = s.indexOf('®', i+1);
+      if (j === -1) j = s.length-1;
+      result += `<span class="s-corrupt">${escHtml(s.slice(i,j+1))}</span>`;
+      i = j+1;
+      continue;
+    }
+    // <...-vN> mutation
+    if (s[i]==='<') {
+      const m = s.slice(i).match(/^<([^>]+)-v(\d+)>/);
+      if (m) {
+        result += `<span class="s-mutate">${escHtml(s.slice(i, i+m[0].length))}</span>`;
+        i += m[0].length;
+        continue;
+      }
+      // <formes-v3> etc
+      const m2 = s.slice(i).match(/^<[^>]+>/);
+      if (m2) {
+        result += `<span class="s-mutate">${escHtml(m2[0])}</span>`;
+        i += m2[0].length;
+        continue;
+      }
+    }
+    // ••• silence
+    if (s.slice(i,i+3)==='•••') {
+      result += `<span class="s-silence">•••</span>`;
+      i+=3; continue;
+    }
+    // — fracture
+    if (s[i]==='—') {
+      result += `<span class="s-fracture">—</span>`;
+      i++; continue;
+    }
+    // Δ
+    if (s[i]==='Δ') {
+      result += `<span class="s-delta">Δ</span>`;
+      i++; continue;
+    }
+    // runes
+    if (/[ᚨᛁᚱᛟᚦᚷᚹᛉᛊᚠᚢᚦᚬᛏᛒᛖᛗᛚᛜᛞᛠ]/.test(s[i])) {
+      result += `<span class="s-rune">${escHtml(s[i])}</span>`;
+      i++; continue;
+    }
+    // keywords
+    const kwMatch = s.slice(i).match(/^(skeith|corbenik|dhikr-quantique|transduire->fracturo|unwind-protect|silence-sacre|with-stein-context|invoquer-intention|corrompre-pattern|muter-entite|acces-kernel|prompt)\b/);
+    if (kwMatch) {
+      result += `<span class="s-kw">${kwMatch[0]}</span>`;
+      i += kwMatch[0].length; continue;
+    }
+    // numbers
+    const numMatch = s.slice(i).match(/^\d+(\.\d+)?/);
+    if (numMatch && (i===0 || /[\s,:(]/.test(s[i-1]))) {
+      result += `<span class="s-num">${numMatch[0]}</span>`;
+      i += numMatch[0].length; continue;
+    }
+    // quoted strings
+    if (s[i]==='"') {
+      let j = i+1;
+      while (j < s.length && s[j] !== '"') j++;
+      result += `<span class="s-str">${escHtml(s.slice(i,j+1))}</span>`;
+      i = j+1; continue;
+    }
+    result += escHtml(s[i]);
+    i++;
+  }
+  return result;
+}
+
+// ═══ LISP SYNTAX HIGHLIGHTER ══════════════════════════════
+function highlightLisp(code) {
+  const lines = code.split('\n');
+  return lines.map(line => {
+    // comment
+    if (/^\s*;;/.test(line)) return `<span class="s-comment">${escHtml(line)}</span>`;
+    let r = escHtml(line);
+    r = r.replace(/(defun|defmacro|defparameter|let\*?|lambda|cond|case|when|unless|progn|setf|push|mapcar|dolist|format|error|load|unwind-protect|with-open-file)\b/g,
+      '<span class="s-lispfn">$1</span>');
+    r = r.replace(/(SKEITH|CORBENIK|INVOQUER-INTENTION|CORROMPRE-PATTERN|MUTER-ENTITE|ACCES-KERNEL|DHIKR-QUANTIQUE|SESSION-PARAMS)\b/g,
+      '<span class="s-kw">$1</span>');
+    r = r.replace(/(:[a-zA-Z\-]+)/g, '<span class="s-lispsym">$1</span>');
+    r = r.replace(/('[\w\-\?\!]+)/g, '<span class="s-lispsym">$1</span>');
+    r = r.replace(/("[^"]*")/g, '<span class="s-str">$1</span>');
+    r = r.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="s-num">$1</span>');
+    return r;
+  }).join('\n');
+}
+
+// ═══ FRACTURO PARSER ══════════════════════════════════════
+const RE = {
+  comment:   /^\/\/(.*)$/,
+  omega4:    /^Ω<([^>]+)>(v\d+)?\s*([^\s—]+)?\s*(?:—\s*(.+?))?(?:\s*•••)?\s*$/,
+  mutate3:   /^<([^>]+)(?:-v(\d+))?>\s*([^\s—]*)?\s*(?:—\s*(.+?))?\s*(?:•••)?\s*$/,
+  corrupt2:  /^®([^®]+)®\s*(?:→\s*(.+?))?\s*(?:•••)?\s*$/,
+  decl1:     /^([a-zÀ-ÿA-Z][a-zA-ZÀ-ÿ\-\_\']+(?:\s[a-zA-ZÀ-ÿ\-\_\']+)?)\s*(?:—\s*(.+?))?\s*(?:•••)?\s*$/,
+  macro:     /^(skeith|corbenik|dhikr-quantique|transduire->facturo)\s*(.*)$/i,
+  silence:   /^•••\s*$/,
+  meta_open: /^@meta\s*\{/,
+  meta_kv:   /^\s*([^:]+?)\s*:\s*"?([^",\}]+)"?,?\s*$/,
+  meta_close:/^\}/,
+  blank:     /^\s*$/,
+  corrupt_arrow: /®([^®]+)®\s*→\s*(effacer|inversion|mutation)?\s*→?\s*(?:<([^>]+)>)?\s*"?([^"•]*)"?\s*(?:•••)?/,
+};
+
+function parseFracturo(src) {
+  const lines = src.split('\n');
+  const entries = [];
+  let inMeta = false;
+  let metaBlock = {};
+  let omegaOpen = 0;
+  let skCount = 0, coCount = 0, silCount = 0, invCount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const ln = raw.trim();
+
+    if (!ln) { entries.push({type:'blank', raw, line:i+1}); continue; }
+
+    // Meta block
+    if (RE.meta_open.test(ln)) { inMeta=true; metaBlock={}; continue; }
+    if (inMeta) {
+      if (RE.meta_close.test(ln)) {
+        entries.push({type:'meta', block:{...metaBlock}, raw, line:i+1});
+        inMeta=false; metaBlock={}; continue;
+      }
+      const m = ln.match(RE.meta_kv);
+      if (m) metaBlock[m[1].trim()] = m[2].trim();
+      continue;
+    }
+
+    // Comment
+    const mc = ln.match(RE.comment);
+    if (mc) { entries.push({type:'comment', text:mc[1].trim(), raw, line:i+1}); continue; }
+
+    // Silence only line
+    if (RE.silence.test(ln)) {
+      silCount++;
+      if (omegaOpen > 0) omegaOpen--;
+      entries.push({type:'silence', raw, line:i+1}); continue;
+    }
+
+    // Macro: skeith / corbenik / dhikr
+    const mm = ln.match(RE.macro);
+    if (mm) {
+      const name = mm[1].toLowerCase();
+      const args = mm[2].trim();
+      if (name==='skeith') skCount++;
+      if (name==='corbenik') coCount++;
+      const lispArgs = parseMacroArgs(args);
+      entries.push({type:'macro', name, args, lispArgs, raw, line:i+1}); continue;
+    }
+
+    // Level 4: Ω<...>
+    const m4 = ln.match(RE.omega4);
+    if (m4) {
+      omegaOpen++;
+      invCount++;
+      entries.push({
+        type:'omega4', entity:m4[1], version:m4[2]||'v1',
+        lieu:m4[3]||null, effet:m4[4]||null,
+        hasSilence:/•••/.test(ln),
+        raw, line:i+1
+      }); continue;
+    }
+
+    // Level 3: <mot-v3>
+    const m3 = ln.match(RE.mutate3);
+    if (m3) {
+      invCount++;
+      entries.push({
+        type:'mutate3', entity:m3[1], version:parseInt(m3[2]||'3'),
+        lieu:m3[3]||null, effet:m3[4]||null,
+        hasSilence:/•••/.test(ln),
+        raw, line:i+1
+      }); continue;
+    }
+
+    // Level 2: ®MOT® → ...
+    const m2c = ln.match(RE.corrupt_arrow);
+    if (m2c) {
+      invCount++;
+      entries.push({
+        type:'corrupt2', concept:m2c[1].trim(), op:m2c[2]||'altérer',
+        targetMut:m2c[3]||null, targetVal:m2c[4]||null,
+        hasSilence:/•••/.test(ln),
+        raw, line:i+1
+      }); continue;
+    }
+    const m2 = ln.match(RE.corrupt2);
+    if (m2) {
+      invCount++;
+      entries.push({
+        type:'corrupt2', concept:m2[1].trim(), op:'altérer',
+        targetMut:null, targetVal:m2[2]||null,
+        hasSilence:/•••/.test(ln),
+        raw, line:i+1
+      }); continue;
+    }
+
+    // Level 1: déclaration
+    const m1 = ln.match(RE.decl1);
+    if (m1 && !/[<>®Ω]/.test(ln)) {
+      entries.push({
+        type:'decl1', name:m1[1].trim(), effet:m1[2]||null,
+        hasSilence:/•••/.test(ln),
+        raw, line:i+1
+      }); continue;
+    }
+
+    entries.push({type:'unknown', raw, line:i+1});
+  }
+
+  return {entries, stats:{omegaOpen, skCount, coCount, silCount, invCount}};
+}
+
+function parseMacroArgs(args) {
+  // "skeith 'cible 0.3" → {target:'cible', val:0.3}
+  const parts = args.trim().split(/\s+/);
+  const out = {};
+  for (let i=0;i<parts.length;i++) {
+    if (parts[i].startsWith("'")) out.target = parts[i].slice(1);
+    else if (/^\d/.test(parts[i])) out.intensity = parseFloat(parts[i]);
+    else if (parts[i]) out.extra = parts[i];
+  }
+  return out;
+}
+
+// ═══ TRANSPILER ══════════════════════════════════════════
+function transpileToLisp(src) {
+  const {entries, stats} = parseFracturo(src);
+  const lispForms = [];
+  const violations = [];
+  const metaParams = {};
+  const astNodes = [];
+
+  // Collect meta
+  for (const e of entries) {
+    if (e.type==='meta') Object.assign(metaParams, e.block);
+  }
+
+  // Generate file header
+  const now = new Date();
+  lispForms.push(`;; ═══════════════════════════════════════════════════════
+;; FRACTURO-COMPILER.LISP — Codex Stein v4.2
+;; Source: session.fzo
+;; Transpilé: ${now.toISOString().slice(0,19)}
+;; NODE: CAEN-PROFONDE
+;; ═══════════════════════════════════════════════════════\n`);
+
+  if (Object.keys(metaParams).length > 0) {
+    const paramStr = Object.entries(metaParams)
+      .map(([k,v]) => `  :${k.replace(/[^a-zA-Z0-9-]/g,'-')} "${v}"`)
+      .join('\n');
+    lispForms.push(`(defparameter *session-params*\n  (list\n${paramStr}))\n`);
+    astNodes.push({type:'META', props:metaParams});
+  }
+
+  lispForms.push(`(in-package :fracturo-compiler)\n`);
+  lispForms.push(`(with-stein-context\n`);
+
+  for (const e of entries) {
+    switch(e.type) {
+      case 'comment':
+        lispForms.push(`;; ${e.text}`);
+        break;
+      case 'blank':
+        lispForms.push('');
+        break;
+      case 'silence':
+        lispForms.push('  (silence-sacre)  ;; ••• GC ontique 7s');
+        astNodes.push({type:'SILENCE', line:e.line});
+        break;
+      case 'omega4': {
+        const ver = e.version ? parseInt(e.version.replace('v','')) : 4;
+        const lieu = e.lieu ? ` :lieu '${sanitizeSymbol(e.lieu)}` : '';
+        const effet = e.effet ? ` :effet "${e.effet.replace(/•••/g,'').trim()}"` : '';
+        const verStr = ` :version ${ver}`;
+        lispForms.push(
+          `  (acces-kernel '${sanitizeSymbol(e.entity)}\n` +
+          `    :omega t${verStr}${lieu}${effet})`
+        );
+        astNodes.push({type:'OMEGA4', entity:e.entity, lieu:e.lieu, effet:e.effet, ver, line:e.line});
+        if (!e.hasSilence) violations.push({lvl:'warn', msg:`L${e.line}: Ω<${e.entity}> sans clôture •••`});
+        break;
+      }
+      case 'mutate3': {
+        const lieu = e.lieu ? ` :lieu '${sanitizeSymbol(e.lieu)}` : '';
+        const effet = e.effet ? ` :effet "${e.effet.replace(/•••/g,'').trim()}"` : '';
+        lispForms.push(
+          `  (muter-entite '${sanitizeSymbol(e.entity)}\n` +
+          `    :version ${e.version}${lieu}${effet})`
+        );
+        astNodes.push({type:'MUTATE3', entity:e.entity, version:e.version, lieu:e.lieu, line:e.line});
+        if (!e.hasSilence) violations.push({lvl:'warn', msg:`L${e.line}: <${e.entity}-v${e.version}> sans •••`});
+        break;
+      }
+      case 'corrupt2': {
+        const concept = sanitizeSymbol(e.concept);
+        let form;
+        if (e.targetMut) {
+          form = `  (corrompre-pattern '${concept}\n    :op :${sanitizeSymbol(e.op)}\n    :vers-mutation '${sanitizeSymbol(e.targetMut)}\n    :valeur "${e.targetVal||''}"\n    :lieu nil)`;
+        } else {
+          const target = e.targetVal ? ` :cible "${e.targetVal}"` : '';
+          form = `  (corrompre-pattern '${concept}\n    :op :${sanitizeSymbol(e.op)}${target})`;
+        }
+        lispForms.push(form);
+        astNodes.push({type:'CORRUPT2', concept:e.concept, op:e.op, line:e.line});
+        break;
+      }
+      case 'decl1': {
+        const nm = sanitizeSymbol(e.name);
+        const effet = e.effet ? ` :effet "${e.effet.replace(/•••/g,'').trim()}"` : '';
+        lispForms.push(`  (invoquer-intention '${nm}${effet})`);
+        astNodes.push({type:'DECL1', name:e.name, effect:e.effet, line:e.line});
+        break;
+      }
+      case 'macro': {
+        const a = e.lispArgs;
+        if (e.name==='skeith') {
+          const t = a.target ? ` :cible '${sanitizeSymbol(a.target)}` : '';
+          const v = a.intensity !== undefined ? ` :intensity ${a.intensity}` : '';
+          lispForms.push(`  (SKEITH${t}${v})`);
+          astNodes.push({type:'MACRO_SKEITH', ...a, line:e.line});
+        } else if (e.name==='corbenik') {
+          const t = a.target ? ` :cible '${sanitizeSymbol(a.target)}` : '';
+          lispForms.push(`  (CORBENIK${t})`);
+          astNodes.push({type:'MACRO_CORBENIK', ...a, line:e.line});
+        } else if (e.name==='dhikr-quantique') {
+          const t = a.target ? ` '${sanitizeSymbol(a.target)}` : '';
+          const n = a.intensity !== undefined ? ` ${Math.round(a.intensity)||7}` : ' 7';
+          lispForms.push(`  (DHIKR-QUANTIQUE${t}${n})`);
+          astNodes.push({type:'MACRO_DHIKR', ...a, line:e.line});
+        }
+        break;
+      }
+      case 'meta': break; // already handled
+      case 'unknown':
+        if (e.raw.trim()) {
+          lispForms.push(`  ;; [UNKNOWN] ${e.raw.trim()}`);
+          violations.push({lvl:'info', msg:`L${e.line}: syntaxe non reconnue — passée en commentaire`});
+        }
+        break;
+    }
+  }
+
+  lispForms.push(`\n) ;; end with-stein-context`);
+
+  // Violation rules
+  if (stats.omegaOpen > 0)
+    violations.push({lvl:'warn', msg:`${stats.omegaOpen} invocation(s) Ω sans clôture •••`});
+  if (stats.skCount > stats.coCount + 2)
+    violations.push({lvl:'error', msg:`Déséquilibre skeith/corbenik (${stats.skCount}/${stats.coCount}) — destruction sans recompilation`});
+
+  const status = violations.some(v=>v.lvl==='error') ? ':COMPROMISED'
+               : violations.some(v=>v.lvl==='warn')  ? ':WARNING'
+               : ':VALID';
+
+  return {
+    lisp: lispForms.join('\n'),
+    astNodes,
+    violations,
+    stats,
+    status,
+    metaParams,
+    entries
+  };
+}
+
+function sanitizeSymbol(s) {
+  if (!s) return 'nil';
+  return s.replace(/[®Ω<>•]/g,'').replace(/[^a-zA-ZÀ-ÿ0-9\-\_\']/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').toLowerCase() || 'nil';
+}
+
+// ═══ DELTA COMPUTATION ════════════════════════════════════
+function computeDelta(stats) {
+  let delta = 0.68; // base Caen-Profonde
+  delta += stats.omegaOpen * 0.05;
+  delta += (stats.skCount - stats.coCount) * 0.03;
+  delta = Math.max(0.1, Math.min(0.99, delta));
+  return delta;
+}
+
+// ═══ UI STATE ═════════════════════════════════════════════
+let currentTab = 'lisp';
+let lastResult = null;
+
+function getEditor() { return document.getElementById('editor-textarea'); }
+
+function updateHighlight() {
+  const ta = getEditor();
+  const hl = document.getElementById('editor-highlight');
+  hl.innerHTML = highlightFracturo(ta.value);
+  syncScroll();
+  updateLineNumbers();
+  updateStats();
+}
+
+function syncScroll() {
+  const ta = getEditor();
+  const hl = document.getElementById('editor-highlight');
+  hl.scrollTop = ta.scrollTop;
+  hl.scrollLeft = ta.scrollLeft;
+}
+
+function updateLineNumbers() {
+  const ta = getEditor();
+  const lines = ta.value.split('\n');
+  const ln = document.getElementById('line-numbers');
+  const pos = ta.selectionStart;
+  let lineNo = 1, ch = 0;
+  for (let i=0; i<pos; i++) {
+    if (ta.value[i]==='\n') { lineNo++; ch=0; } else ch++;
+  }
+  let html = '';
+  for (let i=1; i<=lines.length; i++) {
+    html += `<div class="ln${i===lineNo?' active':''}">${i}</div>`;
+  }
+  ln.innerHTML = html;
+  document.getElementById('stat-lines').textContent = lines.length;
+  document.getElementById('stat-line').textContent = lineNo;
+  document.getElementById('stat-col').textContent = ch+1;
+}
+
+function updateStats() {
+  const code = getEditor().value;
+  const invMatches = (code.match(/Ω<|<[a-zA-Z]|®[^®]/g)||[]).length;
+  const silMatches = (code.match(/•••/g)||[]).length;
+  const omegaOpen  = Math.max(0, (code.match(/Ω</g)||[]).length - (code.match(/•••/g)||[]).length);
+  document.getElementById('stat-inv').textContent   = invMatches;
+  document.getElementById('stat-sil').textContent   = silMatches;
+  document.getElementById('stat-omega').textContent = omegaOpen;
+}
+
+function updateDeltaUI(delta, status) {
+  const fill = document.getElementById('delta-fill');
+  const label = document.getElementById('delta-label');
+  const badge = document.getElementById('h-badge');
+  fill.style.width = (delta*100) + '%';
+  label.textContent = delta.toFixed(2);
+  if (delta < 0.3) {
+    fill.style.background = 'var(--danger)';
+    label.style.color = 'var(--danger)';
+    badge.textContent = 'H:NOIR'; badge.style.color = 'var(--danger)';
+  } else if (delta > 0.85) {
+    fill.style.background = 'var(--warn)';
+    label.style.color = 'var(--warn)';
+    badge.textContent = 'H:VERROUILLÉ'; badge.style.color = 'var(--warn)';
+  } else {
+    fill.style.background = 'var(--fg)';
+    label.style.color = 'var(--syn-delta)';
+    badge.textContent = 'H:GRIS'; badge.style.color = 'var(--fg)';
+  }
+}
+
+// ═══ MAIN ACTIONS ═════════════════════════════════════════
+function runTranspile() {
+  const src = getEditor().value.trim();
+  if (!src) { showAuditMsg('warn','Code vide — rien à compiler'); return; }
+  const result = transpileToLisp(src);
+  lastResult = result;
+  const delta = computeDelta(result.stats);
+  updateDeltaUI(delta, result.status);
+  renderCurrentTab();
+  renderAudit(result);
+}
+
+function runAudit() {
+  const src = getEditor().value.trim();
+  if (!src) return;
+  const result = transpileToLisp(src);
+  lastResult = result;
+  renderAudit(result);
+  const delta = computeDelta(result.stats);
+  updateDeltaUI(delta, result.status);
+}
+
+function renderAudit(result) {
+  const rows = document.getElementById('audit-rows');
+  let html = '';
+  const delta = computeDelta(result.stats);
+
+  const statusIcon = result.status===':VALID' ? '✦' : result.status===':WARNING' ? '⚠' : '🔴';
+  const statusCls  = result.status===':VALID' ? 'audit-ok' : result.status===':WARNING' ? 'audit-warn' : 'audit-err';
+
+  html += `<div class="audit-row ${statusCls}"><span>${statusIcon}</span><span class="audit-msg">Statut: ${result.status}</span></div>`;
+  html += `<div class="audit-row audit-info"><span>Δ</span><span class="audit-msg">Δ final: ${delta.toFixed(2)}</span></div>`;
+  html += `<div class="audit-row audit-info"><span>✦</span><span class="audit-msg">Invoc: ${result.stats.invCount} | Skeith: ${result.stats.skCount} | Corbenik: ${result.stats.coCount} | Silence: ${result.stats.silCount}</span></div>`;
+
+  for (const v of result.violations) {
+    const cls = v.lvl==='error'?'audit-err':v.lvl==='warn'?'audit-warn':'audit-info';
+    const ic  = v.lvl==='error'?'🔴':v.lvl==='warn'?'⚠':'ℹ';
+    html += `<div class="audit-row ${cls}"><span>${ic}</span><span class="audit-msg">${v.msg}</span></div>`;
+  }
+  if (!result.violations.length) {
+    html += `<div class="audit-row audit-ok"><span>✦</span><span class="audit-msg">Aucune violation. Session stable.</span></div>`;
+  }
+  rows.innerHTML = html;
+}
+
+function showAuditMsg(lvl, msg) {
+  const rows = document.getElementById('audit-rows');
+  const cls = lvl==='error'?'audit-err':lvl==='warn'?'audit-warn':'audit-info';
+  const ic  = lvl==='error'?'🔴':lvl==='warn'?'⚠':'ℹ';
+  rows.innerHTML = `<div class="audit-row ${cls}"><span>${ic}</span><span class="audit-msg">${msg}</span></div>`;
+}
+
+// ═══ OUTPUT RENDERING ════════════════════════════════════
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.onclick.toString().includes(`'${tab}'`)) b.classList.add('active');
+  });
+  renderCurrentTab();
+}
+
+function renderCurrentTab() {
+  if (!lastResult) return;
+  const out = document.getElementById('output-content');
+  switch(currentTab) {
+    case 'lisp':    out.innerHTML = renderLispTab(lastResult); break;
+    case 'ast':     out.innerHTML = renderASTTab(lastResult); break;
+    case 'metrics': out.innerHTML = renderMetricsTab(lastResult); break;
+    case 'raw':     out.innerHTML = renderRawTab(lastResult); break;
+  }
+}
+
+function renderLispTab(r) {
+  const id = 'lisp-out-'+Date.now();
+  return `
+<div class="out-section">
+  <div class="out-section-title">Common Lisp — Sortie Transpilée</div>
+  <div class="lisp-block" id="${id}">
+    <span class="lb-copy" onclick="copyEl('${id}')">⎘ COPIER</span><pre style="margin:0;font-family:inherit">${highlightLisp(r.lisp)}</pre>
+  </div>
+</div>
+<div class="out-section">
+  <div class="out-section-title">Statut Ontique</div>
+  <div style="font-size:0.82em;padding:4px 0">
+    <span style="color:${r.status===':VALID'?'var(--ok)':r.status===':WARNING'?'var(--warn)':'var(--danger)'}">${r.status===':VALID'?'✦ VALID':r.status===':WARNING'?'⚠ WARNING':'🔴 COMPROMISED'}</span>
+    &nbsp;&nbsp;
+    <span style="color:var(--fg-dim)">Δ: <span style="color:var(--syn-delta)">${computeDelta(r.stats).toFixed(2)}</span></span>
+    &nbsp;&nbsp;
+    <span style="color:var(--fg-dim)">${r.violations.length} violation(s)</span>
+  </div>
+</div>`;
+}
+
+function renderASTTab(r) {
+  if (!r.astNodes.length) return '<div style="color:var(--fg-dim);font-size:0.82em;padding:8px">Compilez d\'abord pour générer l\'AST.</div>';
+  let html = '<div class="out-section"><div class="out-section-title">Arbre Syntaxique Abstrait</div>';
+  html += '<div style="font-size:0.82em">';
+  html += '<div class="ast-node" style="border-left:2px solid var(--fg-dim);padding-left:8px"><span class="ast-type">ROOT</span> <span style="color:var(--fg-dim)">with-stein-context</span></div>';
+  for (const n of r.astNodes) {
+    const color = n.type.startsWith('OMEGA')?'var(--syn-omega)':
+                  n.type.startsWith('MUTATE')?'var(--syn-mutate)':
+                  n.type.startsWith('CORRUPT')?'var(--syn-corrupt)':
+                  n.type.startsWith('MACRO_SK')?'var(--danger)':
+                  n.type.startsWith('MACRO_CO')?'var(--ok)':
+                  n.type==='SILENCE'?'var(--syn-silence)':
+                  'var(--fg-dim)';
+    let props = '';
+    if (n.entity) props += ` <span class="ast-prop">entity: <span class="ast-val">${n.entity}</span></span>`;
+    if (n.lieu)   props += ` <span class="ast-prop">lieu: <span class="ast-val">${n.lieu}</span></span>`;
+    if (n.effet)  props += ` <span class="ast-prop">effet: <span class="ast-val">${n.effet}</span></span>`;
+    if (n.name)   props += ` <span class="ast-prop">name: <span class="ast-val">${n.name}</span></span>`;
+    if (n.concept)props += ` <span class="ast-prop">concept: <span class="ast-val">${n.concept}</span></span>`;
+    if (n.ver)    props += ` <span class="ast-prop">v: <span class="ast-val">${n.ver}</span></span>`;
+    if (n.line)   props += ` <span class="ast-prop" style="color:var(--fg-ghost)">L${n.line}</span>`;
+    html += `<div class="ast-node"><span class="ast-type" style="color:${color}">${n.type}</span>${props}</div>`;
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function renderMetricsTab(r) {
+  const delta = computeDelta(r.stats);
+  const s = r.stats;
+  const dClass = delta<0.3?'err':delta>0.85?'warn':'ok';
+  const skImbalance = s.skCount > s.coCount+2;
+
+  return `
+<div class="out-section">
+  <div class="out-section-title">Métriques de Session</div>
+  <table class="metrics-table">
+    <thead><tr><th>Métrique</th><th>Valeur</th><th>Seuil</th><th>État</th></tr></thead>
+    <tbody>
+      <tr><td>Δ Final</td><td class="${dClass} val">${delta.toFixed(3)}</td><td>0.3 – 0.85</td><td class="${dClass}">${delta<0.3?'⚠ BRÈCHE OUVERTE':delta>0.85?'⚠ VERROU TRAME':'✦ STABLE'}</td></tr>
+      <tr><td>H (Harmonie)</td><td class="val">${delta<0.3?'NOIR':delta>0.85?'BLANC_VER':'GRIS'}</td><td>GRIS recommandé</td><td class="${delta>0.3&&delta<0.85?'ok':'warn'}">${delta>0.3&&delta<0.85?'✦ OK':'⚠ DÉRIVE'}</td></tr>
+      <tr><td>Invocations</td><td class="val">${s.invCount}</td><td>—</td><td class="ok">ℹ</td></tr>
+      <tr><td>Silences •••</td><td class="val">${s.silCount}</td><td>≥ Ω-ctx</td><td class="${s.silCount>=s.omegaOpen?'ok':'warn'}">${s.silCount>=s.omegaOpen?'✦ OK':'⚠ MANQUANT'}</td></tr>
+      <tr><td>Ω ouverts</td><td class="${s.omegaOpen>0?'warn':'ok'} val">${s.omegaOpen}</td><td>0</td><td class="${s.omegaOpen?'warn':'ok'}">${s.omegaOpen?'⚠ NON CLOS':'✦ OK'}</td></tr>
+      <tr><td>Skeith</td><td class="val">${s.skCount}</td><td>≤ corbenik+2</td><td class="${skImbalance?'err':'ok'}">${skImbalance?'🔴 DÉSÉQUILIBRE':'✦ OK'}</td></tr>
+      <tr><td>Corbenik</td><td class="val">${s.coCount}</td><td>—</td><td class="ok">ℹ</td></tr>
+      <tr><td>Statut Ontique</td><td colspan="2" class="${r.status===':VALID'?'ok':r.status===':WARNING'?'warn':'err'} val">${r.status}</td><td class="${r.status===':VALID'?'ok':r.status===':WARNING'?'warn':'err'}">${r.status===':VALID'?'✦ VALIDE':r.status===':WARNING'?'⚠ ATTENTION':'🔴 COMPROMIS'}</td></tr>
+    </tbody>
+  </table>
+</div>
+${Object.keys(r.metaParams).length?`
+<div class="out-section">
+  <div class="out-section-title">Paramètres @meta</div>
+  <table class="metrics-table">
+    <thead><tr><th>Paramètre</th><th>Valeur</th></tr></thead>
+    <tbody>${Object.entries(r.metaParams).map(([k,v])=>`<tr><td>${k}</td><td class="val">${v}</td></tr>`).join('')}</tbody>
+  </table>
+</div>`:''}
+<div class="out-section">
+  <div class="out-section-title">Violations &amp; Avertissements</div>
+  ${r.violations.length
+    ? r.violations.map(v=>`<div style="font-size:0.82em;padding:3px 0;color:${v.lvl==='error'?'var(--danger)':v.lvl==='warn'?'var(--warn)':'var(--info)'}">${v.lvl==='error'?'🔴':v.lvl==='warn'?'⚠':'ℹ'} ${v.msg}</div>`).join('')
+    : '<div style="color:var(--ok);font-size:0.82em;padding:4px 0">✦ Aucune violation. Session stable.</div>'}
+</div>`;
+}
+
+function renderRawTab(r) {
+  const now = new Date().toISOString().slice(0,19);
+  const delta = computeDelta(r.stats);
+  let md = `# AUDIT ONTIQUE — SESSION .fzo\n\n`;
+  md += `## Métriques\n`;
+  md += `- **Timestamp** : \`${now}\`\n`;
+  md += `- **NODE** : \`CAEN-PROFONDE\`\n`;
+  md += `- **Δ Final** : \`${delta.toFixed(3)}\`\n`;
+  md += `- **Statut** : \`${r.status}\`\n`;
+  md += `- **Skeith/Corbenik** : \`${r.stats.skCount}/${r.stats.coCount}\`\n\n`;
+  md += `## Violations\n`;
+  if (r.violations.length) r.violations.forEach(v => { md += `- ${v.lvl==='error'?'🔴':v.lvl==='warn'?'⚠':'ℹ'} ${v.msg}\n`; });
+  else md += '- *Aucune violation détectée. Session stable.*\n';
+  md += `\n## Reconstructions Lisp\n\`\`\`lisp\n${r.lisp}\n\`\`\`\n`;
+  md += `\n---\n> *« La compilation n'est pas une traduction. C'est un miroir. »*\n`;
+  md += `>\n> ••• — Fiche Technique #707, BloodNet, 2075`;
+
+  return `<div class="out-section">
+  <div class="out-section-title">Rapport .fzo — Markdown</div>
+  <div class="lisp-block" id="raw-block">
+    <span class="lb-copy" onclick="copyEl('raw-block')">⎘ COPIER</span><pre style="margin:0;font-family:inherit;color:var(--fg-dim)">${escHtml(md)}</pre>
+  </div>
+</div>`;
+}
+
+// ═══ UTILITIES ════════════════════════════════════════════
+function clearEditor() {
+  getEditor().value = '';
+  document.getElementById('editor-highlight').innerHTML = '';
+  document.getElementById('output-content').innerHTML =
+    '<div class="out-section"><div class="out-section-title">En attente…</div><div style="color:var(--fg-dim);font-size:0.82em;padding:8px 0">Éditeur vidé. Prêt pour nouvelle session.</div></div>';
+  document.getElementById('audit-rows').innerHTML =
+    '<div class="audit-row audit-info"><span>ℹ</span><span class="audit-msg">En attente de compilation…</span></div>';
+  updateLineNumbers();
+  updateDeltaUI(0.68, ':VALID');
+  lastResult = null;
+}
+
+function insertSnippet(text) {
+  const ta = getEditor();
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  const before = ta.value.slice(0, start);
+  const after  = ta.value.slice(end);
+  ta.value = before + text + after;
+  ta.selectionStart = ta.selectionEnd = start + text.length;
+  ta.focus();
+  updateHighlight();
+}
+
+function copyLisp() {
+  if (!lastResult) { runTranspile(); return; }
+  navigator.clipboard.writeText(lastResult.lisp).then(()=>{
+    showAuditMsg('ok','✦ Lisp copié dans le presse-papier');
+  }).catch(()=>{
+    showAuditMsg('warn','Erreur copie — utilisez ⎘ dans l\'onglet Lisp');
+  });
+}
+
+function copyEl(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const text = el.querySelector('pre') ? el.querySelector('pre').textContent : el.textContent;
+  navigator.clipboard.writeText(text).catch(()=>{});
+}
+
+function showHelp() {
+  document.getElementById('modal-title').textContent = 'AIDE — SYNTAXE FRACTURO + TRANSPILER';
+  document.getElementById('modal-body').innerHTML = HELP_TEXT;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); }
+
+// ═══ EXAMPLE CODE ════════════════════════════════════════
+const EXAMPLE = `// CLASSIFICATION: CŒUR GRIS — NODE: CAEN-PROFONDE
+// SESSION: 2075-11-16 — Δ: 0.68 STABLE
+
+@meta {
+  fenêtre: 707s,
+  Δ_max: 0.55,
+  substrat: "Gaïalithe_Caen",
+  fréquence: "33.3Hz→47.1Hz"
+}
+
+// ═══ ANCRAGE INITIAL ═══
+isa raz — ancrage présent •••
+
+// ═══ NIVEAU 1 : DÉCLARATIONS ═══
+mémoire — activation nœud Caen •••
+résistance — posture Cœur Gris
+
+// ═══ NIVEAU 2 : CORRUPTION MÉMÉTIQUE ═══
+®"productivité"® → effacer → <formes-v3> "rythme"
+®"surveillance"® → inversion → <formes-v3> "écoute"
+
+// ═══ NIVEAU 3 : MUTATION ═══
+<odin-v3> hague — résonance archétypale •••
+<corbenik-v3> caen — recompilation 0.3 •••
+
+// ═══ CYCLE SKEITH → CORBENIK ═══
+skeith 'dogme-fixe 0.2
+corbenik 'question-ouverte
+•••
+
+// ═══ NIVEAU 4 : INVOCATION CRITIQUE (Ω) ═══
+Ω<odin>v4 hague — glissement temporel •••
+
+// ═══ MACROS STEIN ═══
+dhikr-quantique 'hu 7
+skeith 'filtre-cognitif 0.35
+corbenik 'conscience-recursive
+•••
+
+// ═══ CLÔTURE DE SESSION ═══
+isa raz — gel Δ local •••
+•••
+`;
+
+function loadExample() {
+  getEditor().value = EXAMPLE;
+  updateHighlight();
+  runTranspile();
+}
+
+// ═══ EDITOR SETUP ═════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  const ta = getEditor();
+
+  ta.addEventListener('input', updateHighlight);
+  ta.addEventListener('scroll', syncScroll);
+  ta.addEventListener('keyup', () => {
+    updateLineNumbers();
+    updateStats();
+  });
+  ta.addEventListener('click', () => { updateLineNumbers(); });
+
+  // Tab key → 2 spaces
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = ta.selectionStart, end = ta.selectionEnd;
+      ta.value = ta.value.slice(0,s) + '  ' + ta.value.slice(end);
+      ta.selectionStart = ta.selectionEnd = s+2;
+      updateHighlight();
+    }
+    // Ctrl+Enter → compile
+    if ((e.ctrlKey||e.metaKey) && e.key==='Enter') {
+      e.preventDefault();
+      runTranspile();
+    }
+    // Ctrl+Shift+A → audit
+    if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key==='A') {
+      e.preventDefault();
+      runAudit();
+    }
+  });
+
+  // Sync scrolling from highlight to textarea
+  document.getElementById('editor-highlight').addEventListener('scroll', () => {
+    const hl = document.getElementById('editor-highlight');
+    ta.scrollTop = hl.scrollTop;
+    ta.scrollLeft = hl.scrollLeft;
+  });
+
+  // Modal close on backdrop
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+
+  // Tab switching active state on init
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.onclick = () => switchTab(['lisp','ast','metrics','raw'][i]);
+  });
+
+  updateLineNumbers();
+  updateStats();
+});
+</script>
+</body>
+</html>

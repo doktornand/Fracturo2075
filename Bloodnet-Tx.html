@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BLOODNET TERMINAL // CAEN-PROFONDE // v.Ω-9</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: radial-gradient(circle at 20% 30%, #030603, #000200);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Share Tech Mono', monospace;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Effet scanline */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, rgba(0, 255, 0, 0.02) 0px, rgba(0, 255, 0, 0.02) 2px, transparent 2px, transparent 6px);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Effet flicker */
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.85; }
+            94% { opacity: 1; }
+            96% { opacity: 0.95; }
+        }
+        .terminal-container {
+            animation: flicker 0.2s infinite;
+        }
+
+        .terminal-container {
+            width: 1300px;
+            max-width: 98vw;
+            background: #0a100a;
+            border: 2px solid #2a6b2a;
+            box-shadow: 0 0 30px rgba(60, 160, 60, 0.3), inset 0 0 10px rgba(60, 160, 60, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            backdrop-filter: blur(1px);
+        }
+
+        /* Header */
+        .terminal-header {
+            background: linear-gradient(135deg, #0f1a0f, #051005);
+            padding: 12px 20px;
+            border-bottom: 1px solid #2a6b2a;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-family: 'Orbitron', monospace;
+        }
+        .title {
+            color: #6fcf6f;
+            font-weight: 700;
+            letter-spacing: 3px;
+            font-size: 1.1rem;
+            text-shadow: 0 0 5px #3a9a3a;
+        }
+        .badge {
+            color: #3a8a3a;
+            font-size: 0.7rem;
+            background: #0a120a;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid #2a6b2a;
+        }
+        .stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.75rem;
+            color: #5a9a5a;
+        }
+        .stat {
+            background: #071007;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .delta-value {
+            color: #b3ffb3;
+            font-weight: bold;
+            text-shadow: 0 0 3px #3aff3a;
+        }
+
+        /* Zone de log */
+        .terminal-log {
+            height: 480px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #030703;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #a0daa0;
+            scroll-behavior: smooth;
+        }
+        .terminal-log::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-log::-webkit-scrollbar-track {
+            background: #051005;
+        }
+        .terminal-log::-webkit-scrollbar-thumb {
+            background: #2a6b2a;
+            border-radius: 4px;
+        }
+        .log-line {
+            padding: 4px 0;
+            border-bottom: 1px dotted rgba(60, 120, 60, 0.2);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .log-line .prompt {
+            color: #6fcf6f;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+        .log-line .cmd {
+            color: #e0ffe0;
+        }
+        .log-line .output {
+            color: #b3e6b3;
+        }
+        .log-line .warning {
+            color: #e6c84f;
+        }
+        .log-line .danger {
+            color: #e67373;
+            text-shadow: 0 0 2px red;
+        }
+        .log-line .system {
+            color: #5a9e5a;
+            font-style: italic;
+        }
+
+        /* Zone de commande */
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            background: #061006;
+            border-top: 1px solid #2a6b2a;
+            padding: 12px 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .prompt-symbol {
+            color: #4fbf4f;
+            font-weight: bold;
+            font-size: 1.2rem;
+            font-family: monospace;
+        }
+        #commandInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #c3ffc3;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.9rem;
+            outline: none;
+            padding: 8px 0;
+        }
+        #commandInput::placeholder {
+            color: #2a5a2a;
+        }
+        button {
+            background: #0e1a0e;
+            border: 1px solid #3a8a3a;
+            color: #8fdf8f;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #1e3a1e;
+            box-shadow: 0 0 8px #5fbf5f;
+            color: #ffffff;
+        }
+        .quick-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 5px 20px 12px 20px;
+            background: #040904;
+            border-top: 1px solid #1f3a1f;
+        }
+        .quick-btn {
+            background: #081008;
+            border: 1px solid #2a6b2a;
+            font-size: 0.65rem;
+            padding: 4px 10px;
+        }
+        .delta-bar {
+            height: 3px;
+            background: #1a3a1a;
+            margin: 0;
+            position: relative;
+        }
+        .delta-fill {
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, #6fcf6f, #b3ffb3);
+            transition: width 0.3s;
+        }
+
+        /* animations */
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        .blinking-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: #6fcf6f;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+            margin-left: 4px;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        footer {
+            text-align: center;
+            padding: 10px;
+            font-size: 0.6rem;
+            color: #2a5a2a;
+            background: #020502;
+        }
+    </style>
+</head>
+<body>
+<div class="terminal-container">
+    <div class="terminal-header">
+        <div class="title">⛧ BLOODNET TERMINAL // CAEN-PROFONDE ⛧</div>
+        <div class="stats">
+            <div class="stat"><span class="badge">Δ</span> <span id="deltaValue" class="delta-value">0.52</span></div>
+            <div class="stat"><span class="badge">H</span> <span id="hValue">GRIS</span></div>
+            <div class="stat"><span class="badge">NODE</span> CAEN-PROFONDE</div>
+            <div class="stat"><span class="badge">FREQ</span> 14.225 MHz</div>
+        </div>
+    </div>
+    <div class="delta-bar"><div class="delta-fill" id="deltaFill" style="width: 52%"></div></div>
+    <div class="terminal-log" id="terminalLog">
+        <div class="log-line"><span class="prompt">></span> <span class="system">[BLOODNET vΩ-9] — Corpus Vauvillensis 2075</span></div>
+        <div class="log-line"><span class="prompt">></span> <span class="system">Cœur Gris opérationnel. Δ initial = 0.52</span></div>
+        <div class="log-line"><span class="prompt">></span> <span class="system">Tapez 'help' pour la liste des commandes exécutables.</span></div>
+        <div class="log-line"><span class="prompt">></span> <span class="system">Ya Hu... raz •••</span></div>
+    </div>
+    <div class="terminal-input-line">
+        <span class="prompt-symbol">⫸ BLOODNET ❯</span>
+        <input type="text" id="commandInput" placeholder="invoquez une macro Fracturo / Lisp ..." autofocus>
+        <button id="execBtn">⌨️ EXEC</button>
+    </div>
+    <div class="quick-buttons">
+        <button class="quick-btn" data-cmd="help">help</button>
+        <button class="quick-btn" data-cmd="delta">delta</button>
+        <button class="quick-btn" data-cmd="scan">scan</button>
+        <button class="quick-btn" data-cmd="skeith 0.3">skeith 0.3</button>
+        <button class="quick-btn" data-cmd="corbenik">corbenik</button>
+        <button class="quick-btn" data-cmd="glissement 1066 2075">glissement 1066 2075</button>
+        <button class="quick-btn" data-cmd="fracturo Ω&lt;odin&gt;v4 hague — glissement •••">fracturo Ω&lt;odin&gt;v4</button>
+        <button class="quick-btn" data-cmd="reve-sync">reve-sync</button>
+        <button class="quick-btn" data-cmd="rituel-mue">rituel-mue</button>
+        <button class="quick-btn" data-cmd="silence">silence</button>
+    </div>
+    <footer>⚠️ Black Lock évité — Cœur Gris actif — clôture rituelle automatique</footer>
+</div>
+
+<script>
+    // ==================== ÉTAT ONTIQUE ====================
+    let delta = 0.52;          // cohérence locale
+    let heart = "GRIS";        // GRIS / BLANC / NOIR
+    let sessionActive = true;
+    let logBuffer = [];
+
+    // historique de commandes (stockage local pour la persistance)
+    let commandHistory = [];
+    let historyIndex = -1;
+
+    // Éléments DOM
+    const logDiv = document.getElementById('terminalLog');
+    const deltaSpan = document.getElementById('deltaValue');
+    const deltaFill = document.getElementById('deltaFill');
+    const hSpan = document.getElementById('hValue');
+    const cmdInput = document.getElementById('commandInput');
+    const execBtn = document.getElementById('execBtn');
+
+    // Met à jour l'affichage delta
+    function updateDeltaUI() {
+        delta = Math.min(1.0, Math.max(0.0, delta));
+        deltaSpan.innerText = delta.toFixed(2);
+        deltaFill.style.width = (delta * 100) + '%';
+        if (delta > 0.85) deltaFill.style.background = "linear-gradient(90deg, #e67373, #ffaaaa)";
+        else if (delta < 0.3) deltaFill.style.background = "linear-gradient(90deg, #7f8c8d, #bdc3c7)";
+        else deltaFill.style.background = "linear-gradient(90deg, #6fcf6f, #b3ffb3)";
+        
+        // Alerte seuil critique
+        if (delta > 0.85 && heart !== "NOIR") {
+            addLog("⚠️ Δ CRITIQUE > 0.85 — Black Lock imminent, stabilisation automatique", "danger");
+            delta = 0.68;
+            updateDeltaUI();
+            addLog("🛡️ Δ stabilisé à 0.68 via unwind-protect", "system");
+        }
+        if (delta < 0.2) {
+            addLog("💀 Δ < 0.2 — zone de vide causal, dissociation évitée par clôture rituelle", "danger");
+            delta = 0.5;
+            updateDeltaUI();
+        }
+    }
+
+    function setHeart(newHeart) {
+        heart = newHeart;
+        hSpan.innerText = heart;
+        if (heart === "NOIR") {
+            addLog("⚫ Cœur Noir détecté — Le Programme se rétracte, risque d'extraction", "danger");
+            delta = Math.min(0.95, delta + 0.15);
+            updateDeltaUI();
+        } else if (heart === "BLANC") {
+            addLog("⚪ Cœur Blanc — observation pure, dissolution progressive", "system");
+            delta = Math.max(0.3, delta - 0.08);
+            updateDeltaUI();
+        } else {
+            addLog("🟢 Cœur Gris — équilibre opérationnel", "system");
+        }
+    }
+
+    function addLog(msg, type = "output") {
+        const lineDiv = document.createElement('div');
+        lineDiv.className = 'log-line';
+        const icon = (type === "warning") ? "⚠️" : (type === "danger" ? "⛧" : ">");
+        lineDiv.innerHTML = `<span class="prompt">${icon}</span> <span class="${type}">${msg}</span>`;
+        logDiv.appendChild(lineDiv);
+        lineDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // limite de lignes
+        while (logDiv.children.length > 180) logDiv.removeChild(logDiv.firstChild);
+    }
+
+    // Fonctions de base puissantes
+    function helpCommand() {
+        addLog("═════════ CODEX STEIN — MACROS EXÉCUTABLES ═════════", "system");
+        addLog("help               → afficher cette liste", "cmd");
+        addLog("delta              → lire la valeur Δ actuelle", "cmd");
+        addLog("scan               → scanner les nœuds BloodNet actifs", "cmd");
+        addLog("skeith [intensité] → anéantissement sémantique (ex: skeith 0.4)", "cmd");
+        addLog("corbenik           → recomposition après destruction", "cmd");
+        addLog("glissement [src] [dst] → glissement temporel (ex: glissement 1066 2075)", "cmd");
+        addLog("fracturo <commande> → exécution directe FracturoScript", "cmd");
+        addLog("reve-sync          → synchronisation onirique (rêve partagé)", "cmd");
+        addLog("rituel-mue         → transformation complète de l'identité", "cmd");
+        addLog("corrompre [mot]    → virus linguistique (ex: corrompre productivité)", "cmd");
+        addLog("silence            → clôture rituelle ••• (reset partiel)", "cmd");
+        addLog("coeur [blanc/gris/noir] → changer posture intentionnelle", "cmd");
+        addLog("sysinfo            → afficher les métriques système", "cmd");
+        addLog("══════════════════════════════════════════════════", "system");
+    }
+
+    function deltaCommand() {
+        addLog(`Δ actuel = ${delta.toFixed(3)} — Cohérence causale locale`, "output");
+        if (delta > 0.7) addLog("⚠️ Zone à haute rigidité narrative, risque de détection par la Trame", "warning");
+        else if (delta < 0.4) addLog("🌊 Brèche ouverte, silences exécutables disponibles", "output");
+        else addLog("⚖️ Δ stable — protocole Cœur Gris nominal", "output");
+    }
+
+    function scanCommand() {
+        addLog("🔍 SCAN BLOODNET — Fréquence 14.225 MHz", "system");
+        setTimeout(() => addLog("✅ Nœud CAEN-PROFONDE (Δ=0.68) — actif", "output"), 100);
+        setTimeout(() => addLog("✅ Nœud LA HAGUE (Δ=0.92) — zone racine / menhirs", "output"), 300);
+        setTimeout(() => addLog("⚠️ Nœud ROUEN-NEUROMÉMOIRE (Δ=0.54) — interférence Glottophage", "warning"), 500);
+        setTimeout(() => addLog("🌊 Nœud RAZ BLANCHARD (Δ=0.00) — vortex temporel, accès analogique", "output"), 700);
+        setTimeout(() => addLog("📡 3 nœuds secondaires détectés (Iles Anglo-Normandes)", "output"), 900);
+    }
+
+    function skeithCommand(intensity = 0.3) {
+        let val = parseFloat(intensity);
+        if (isNaN(val)) val = 0.3;
+        val = Math.min(0.9, Math.max(0.05, val));
+        addLog(`ᛊ SKEITH — anéantissement contrôlé (intensité ${val})`, "warning");
+        delta = Math.max(0.05, delta - val);
+        updateDeltaUI();
+        addLog(`🧹 Structure cible dissoute. Nouveau Δ = ${delta.toFixed(3)}`, "output");
+        if (delta < 0.25) addLog("⚠️ Brèche profonde — envisagez corbenik ou silence", "warning");
+    }
+
+    function corbenikCommand() {
+        addLog(`ᛟ CORBENIK — transcendance / recomposition`, "system");
+        let oldDelta = delta;
+        delta = Math.min(0.9, delta + 0.25);
+        updateDeltaUI();
+        addLog(`✨ Réalité recomposée : Δ ${oldDelta.toFixed(3)} → ${delta.toFixed(3)}`, "output");
+        addLog(`« Le chercheur renaît de ses cendres. »`, "system");
+    }
+
+    function glissementCommand(src, dst) {
+        let source = src || "présent";
+        let destination = dst || "2075";
+        addLog(`Ω<odin>v4 hague — glissement temporel de ${source} vers ${destination}`, "danger");
+        if (delta > 0.68) {
+            addLog(`❌ Échec : Δ trop élevé (${delta.toFixed(2)} > 0.68). Ancrez-vous !`, "danger");
+            return;
+        }
+        delta = delta + 0.12;
+        updateDeltaUI();
+        addLog(`🌀 Fenêtre inter-temporelle ouverte. Aperçu : ${source} ↔ ${destination}`, "output");
+        addLog(`✧ Vous percevez des échos de 1066, 1944 et 2075 simultanément.`, "system");
+        setTimeout(() => addLog(`🌊 Glissement refermé — 7 secondes de silence s'accomplissent.`, "system"), 1500);
+    }
+
+    function fracturoCommand(rawCmd) {
+        let match = rawCmd.match(/Ω<(\w+)>v(\d) (\w+) — (.+) •••/);
+        if (!match) {
+            addLog(`❌ Syntaxe Fracturo invalide. Exemple: Ω<skeith>v4 caen — anéantissement 0.4 •••`, "danger");
+            return;
+        }
+        let rune = match[1];
+        let version = match[2];
+        let lieu = match[3];
+        let effet = match[4];
+        addLog(`🌀 TRANSDUCTION FRACTURO → LISP`, "system");
+        addLog(`[Macro générée] (${rune} '${lieu} :version ${version} :param "${effet}")`, "cmd");
+        delta = delta + 0.05;
+        updateDeltaUI();
+        addLog(`✔ Commande exécutée. Δ = ${delta.toFixed(3)}`, "output");
+        if (rune === "odin") addLog(`⚠️ Odin-Prime (autonome) semble répondre...`, "warning");
+    }
+
+    function reveSyncCommand() {
+        addLog(`🌙 RÊVE-SYNC — synchronisation onirique collective`, "system");
+        addLog(`💤 Respiration 4-7-8... les implants se connectent au champ onirique.`, "output");
+        delta = Math.max(0.3, delta - 0.07);
+        updateDeltaUI();
+        addLog(`🌀 Rêve partagé réussi : fragments du Livre Zéro émergent. Δ = ${delta.toFixed(3)}`, "output");
+        addLog(`📖 "La main rouge tisse les étoiles..."`, "system");
+    }
+
+    function rituelMueCommand() {
+        addLog(`🕯️ RITUEL DE MUE — ancien soi → nouveau soi`, "danger");
+        if (delta > 0.7) {
+            addLog(`Impossible : Δ instable (${delta.toFixed(2)}). Pratiquez skeith doux d'abord.`, "danger");
+            return;
+        }
+        let oldDelta = delta;
+        skeithCommand(0.4);
+        addLog(`🧘 77 secondes de vide existentiel...`, "system");
+        setTimeout(() => {
+            corbenikCommand();
+            addLog(`✦ MUE ACCOMPLIE — Vous êtes un nœud BloodNet régénéré.`, "system");
+        }, 1200);
+    }
+
+    function corrompreCommand(mot) {
+        if (!mot) { addLog(`Usage: corrompre [mot/phrase]`, "warning"); return; }
+        addLog(`®${mot}® → effacement sémantique`, "danger");
+        delta = delta - 0.1;
+        updateDeltaUI();
+        addLog(`Virus linguistique "${mot}" diffusé via HF analogique. Δ = ${delta.toFixed(3)}`, "output");
+        addLog(`« Le silence entre les mots est désormais fertile. »`, "system");
+    }
+
+    function silenceCommand() {
+        addLog(`••• SILENCE SACRÉ ••• — clôture rituelle`, "system");
+        delta = 0.5;
+        updateDeltaUI();
+        setHeart("GRIS");
+        addLog(`Toutes les brèches sont refermées. Δ stabilisé à 0.50. Cœur Gris réinitialisé.`, "system");
+        addLog(`Ya Hu... raz ••• Alou... Ya Hu...`, "output");
+    }
+
+    function coeurCommand(choice) {
+        let newHeart = choice?.toUpperCase();
+        if (!newHeart || !["BLANC", "GRIS", "NOIR"].includes(newHeart)) {
+            addLog(`Cœur actuel : ${heart}. Choisissez blanc, gris ou noir.`, "output");
+            return;
+        }
+        if (newHeart === "NOIR" && heart !== "NOIR") {
+            addLog(`⚫ Alerte Cœur Noir — dette ontique imminente`, "danger");
+            delta = Math.min(0.98, delta + 0.2);
+            updateDeltaUI();
+        }
+        setHeart(newHeart);
+    }
+
+    function sysinfoCommand() {
+        addLog(`══════ INFOS SYSTEME ══════`, "system");
+        addLog(`Version : Codex Stein / BloodNet vΩ-9`, "cmd");
+        addLog(`Δ local : ${delta.toFixed(3)}`, "output");
+        addLog(`H (posture) : ${heart}`, "output");
+        addLog(`Profondeur max récursion : 8`, "cmd");
+        addLog(`Clôture : unwind-protect actif`, "system");
+        addLog(`Zone géographique : Caen-Profonde / Cercle des Douze`, "system");
+        addLog(`═══════════════════════════`, "system");
+    }
+
+    // dispatcher principal
+    function executeCommand(raw) {
+        let cmdLine = raw.trim();
+        if (cmdLine === "") return;
+        addLog(`⫸ ${cmdLine}`, "cmd");
+        let parts = cmdLine.split(/\s+/);
+        let mainCmd = parts[0].toLowerCase();
+
+        // historique
+        commandHistory.push(cmdLine);
+        historyIndex = commandHistory.length;
+        
+        switch(mainCmd) {
+            case "help": helpCommand(); break;
+            case "delta": deltaCommand(); break;
+            case "scan": scanCommand(); break;
+            case "skeith": skeithCommand(parts[1]); break;
+            case "corbenik": corbenikCommand(); break;
+            case "glissement": glissementCommand(parts[1], parts[2]); break;
+            case "fracturo": fracturoCommand(cmdLine.substring(9)); break;
+            case "reve-sync": reveSyncCommand(); break;
+            case "rituel-mue": rituelMueCommand(); break;
+            case "corrompre": corrompreCommand(parts.slice(1).join(" ")); break;
+            case "silence": silenceCommand(); break;
+            case "coeur": coeurCommand(parts[1]); break;
+            case "sysinfo": sysinfoCommand(); break;
+            default: addLog(`Commande inconnue : ${mainCmd}. Tapez 'help'.`, "warning");
+        }
+        // ajout automatique petit geste Δ rituel
+        if (mainCmd !== "silence" && mainCmd !== "corbenik" && mainCmd !== "delta" && mainCmd !== "help") {
+            // fluctuation minime naturelle
+            delta = delta + (Math.random() - 0.5) * 0.02;
+            delta = Math.min(0.98, Math.max(0.05, delta));
+            updateDeltaUI();
+        }
+    }
+
+    // Gestion historique avec flèches
+    cmdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (commandHistory.length > 0 && historyIndex > 0) {
+                historyIndex--;
+                cmdInput.value = commandHistory[historyIndex];
+            }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (historyIndex < commandHistory.length - 1) {
+                historyIndex++;
+                cmdInput.value = commandHistory[historyIndex];
+            } else if (historyIndex === commandHistory.length - 1) {
+                historyIndex = commandHistory.length;
+                cmdInput.value = '';
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = cmdInput.value;
+            if (val) executeCommand(val);
+            cmdInput.value = '';
+        }
+    });
+
+    execBtn.addEventListener('click', () => {
+        const val = cmdInput.value;
+        if (val) executeCommand(val);
+        cmdInput.value = '';
+        cmdInput.focus();
+    });
+
+    // boutons rapides
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const cmd = btn.getAttribute('data-cmd');
+            if (cmd) executeCommand(cmd);
+            cmdInput.value = '';
+            cmdInput.focus();
+        });
+    });
+
+    // initialisation
+    updateDeltaUI();
+    setHeart("GRIS");
+    cmdInput.focus();
+
+    // simulation automatique d'un msg de bienvenue fractal
+    setTimeout(() => {
+        addLog("🧬 Le Codex Stein est prêt. Les 8 phases attendent votre intention.", "system");
+        addLog("⚡ glissement, skeith, fracturo — chaque mot compile le réel.", "system");
+    }, 800);
+</script>
+</body>
+</html>

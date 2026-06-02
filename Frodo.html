@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEX ANALYZER — FRODO.COM [ARCHIVE 1990]</title>
+  <style>
+    :root {
+      --bg: #0a0f0a;
+      --fg: #00ff41;
+      --dim: #008f24;
+      --alert: #ff3366;
+      --warn: #ffcc00;
+      --info: #66ccff;
+      --scanline: rgba(0, 255, 65, 0.03);
+      --glow: 0 0 8px rgba(0, 255, 65, 0.4);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      padding: 1rem;
+      overflow-x: hidden;
+    }
+    /* CRT Effects */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 1px,
+        var(--scanline) 1px,
+        var(--scanline) 2px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(
+        ellipse at center,
+        transparent 0%,
+        rgba(10, 15, 10, 0.4) 100%
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+    header {
+      border-bottom: 2px solid var(--dim);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .title {
+      font-weight: bold;
+      font-size: 1.2rem;
+      text-shadow: var(--glow);
+    }
+    .meta {
+      color: var(--dim);
+      font-size: 0.9rem;
+    }
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    button, select, input {
+      background: var(--bg);
+      color: var(--fg);
+      border: 1px solid var(--dim);
+      padding: 0.3rem 0.6rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover, select:hover, input:hover {
+      border-color: var(--fg);
+      box-shadow: var(--glow);
+    }
+    button.active {
+      background: var(--dim);
+      color: var(--bg);
+    }
+    .search-bar {
+      display: flex;
+      gap: 0.3rem;
+      margin-bottom: 1rem;
+    }
+    .search-bar input {
+      flex: 1;
+      min-width: 200px;
+    }
+    .hex-view {
+      display: grid;
+      grid-template-columns: 100px 1fr 200px;
+      gap: 1rem;
+      background: rgba(0, 20, 0, 0.3);
+      padding: 1rem;
+      border: 1px solid var(--dim);
+      margin-bottom: 1rem;
+    }
+    .offset-col {
+      color: var(--info);
+      text-align: right;
+      user-select: none;
+    }
+    .hex-col {
+      font-family: monospace;
+      letter-spacing: 0.5px;
+      word-break: break-all;
+    }
+    .hex-col .byte {
+      display: inline-block;
+      width: 2ch;
+      text-align: center;
+      cursor: pointer;
+      padding: 0 1px;
+      transition: background 0.1s;
+    }
+    .hex-col .byte:hover {
+      background: rgba(0, 255, 65, 0.2);
+    }
+    .hex-col .byte.anomaly {
+      color: var(--alert);
+      text-shadow: 0 0 4px var(--alert);
+      font-weight: bold;
+    }
+    .hex-col .byte.delta {
+      color: var(--warn);
+    }
+    .hex-col .byte.silence {
+      color: var(--info);
+      font-style: italic;
+    }
+    .ascii-col {
+      color: var(--dim);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .ascii-col .char {
+      cursor: pointer;
+      padding: 0 1px;
+    }
+    .ascii-col .char.anomaly {
+      color: var(--alert);
+      font-weight: bold;
+    }
+    .annotation-panel {
+      border: 1px solid var(--dim);
+      padding: 1rem;
+      min-height: 150px;
+      background: rgba(0, 10, 0, 0.5);
+      margin-bottom: 1rem;
+    }
+    .annotation-title {
+      color: var(--info);
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px dashed var(--dim);
+      padding-bottom: 0.3rem;
+    }
+    .annotation-content {
+      color: var(--fg);
+      white-space: pre-wrap;
+    }
+    .annotation-content .highlight {
+      color: var(--alert);
+      font-weight: bold;
+    }
+    .annotation-content .delta {
+      color: var(--warn);
+    }
+    .annotation-content .silence {
+      color: var(--info);
+      font-style: italic;
+    }
+    .entropy-bar {
+      height: 20px;
+      background: var(--bg);
+      border: 1px solid var(--dim);
+      margin: 0.5rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .entropy-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--dim), var(--fg), var(--warn), var(--alert));
+      transition: width 0.3s;
+    }
+    .entropy-label {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 0.8rem;
+      color: var(--bg);
+      text-shadow: 0 0 2px var(--bg);
+    }
+    .timeline {
+      display: flex;
+      gap: 0.5rem;
+      margin: 1rem 0;
+      padding: 0.5rem;
+      background: rgba(0, 20, 0, 0.3);
+      border: 1px solid var(--dim);
+    }
+    .timeline-btn {
+      flex: 1;
+      padding: 0.4rem;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+    .timeline-btn.active {
+      background: var(--fg);
+      color: var(--bg);
+    }
+    .footer {
+      border-top: 1px solid var(--dim);
+      padding-top: 0.5rem;
+      margin-top: 1rem;
+      color: var(--dim);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .flicker {
+      animation: flicker 0.15s infinite;
+    }
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.95; }
+    }
+    .hidden { display: none; }
+    
+    @media (max-width: 800px) {
+      .hex-view {
+        grid-template-columns: 80px 1fr;
+      }
+      .ascii-col {
+        grid-column: 1 / -1;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px dashed var(--dim);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title pulse">[HEX ANALYZER v2.1] — FRODO.COM</div>
+      <div class="meta">
+        <span>Hash: <span id="hash">Ω7d3c9a2f•••raz•••1e6d4c9a7f2e8b3d6c1a9fΩ</span></span> |
+        <span>Δ: <span id="delta-display" class="delta">0.82</span></span> |
+        <span>Strate: <span id="strate-display">1990</span></span>
+      </div>
+    </header>
+
+    <div class="controls">
+      <button id="btn-load" class="active">Charger FRODO.ASM (1990)</button>
+      <button id="btn-anomaly">Détecter Anomalies</button>
+      <button id="btn-entropy">Analyse Entropie</button>
+      <button id="btn-reset">Réinitialiser</button>
+      <select id="view-mode">
+        <option value="raw">Vue Brute</option>
+        <option value="annotated">Vue Annotée</option>
+        <option value="fracturo">Mode Fracturo</option>
+      </select>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Rechercher: SkisM2025, Δ, •••, Ramat Gan...">
+      <button id="btn-search">Trouver</button>
+      <button id="btn-next">Suivant ▼</button>
+    </div>
+
+    <div class="timeline">
+      <button class="timeline-btn active" data-year="1990">1990 [Original]</button>
+      <button class="timeline-btn" data-year="2021">2021 [McAfee]</button>
+      <button class="timeline-btn" data-year="2025">2025 [SkisM]</button>
+      <button class="timeline-btn" data-year="2075">2075 [Transept]</button>
+    </div>
+
+    <div class="entropy-bar">
+      <div class="entropy-fill" id="entropy-fill" style="width: 78%"></div>
+      <span class="entropy-label">Entropie Shannon: <span id="entropy-value">7.82</span> bits/octet</span>
+    </div>
+
+    <div class="annotation-panel">
+      <div class="annotation-title">ANNOTATION — Offset: <span id="current-offset">—</span></div>
+      <div class="annotation-content" id="annotation-content">
+        Cliquez sur un octet ou une chaîne pour afficher l'annotation.
+        <br><br>
+        <span class="highlight">Indices connus :</span>
+        <br>• Offset 0x1A4C : Chaîne ASCII anormale
+        <br>• Timestamp COFF : 1990-03-14 02:18:11 (fenêtre Transept)
+        <br>• Pic d'entropie à 33.3 Hz (fréquence Gaïalithe)
+        <br>• Signature: <span class="silence">•••</span> et <span class="delta">Δ=0.78</span>
+      </div>
+    </div>
+
+    <div class="hex-view">
+      <div class="offset-col" id="offset-col"></div>
+      <div class="hex-col" id="hex-col"></div>
+      <div class="ascii-col" id="ascii-col"></div>
+    </div>
+
+    <div class="footer">
+      <span>[SIMULATION NARRATIVE — AUCUN CODE RÉEL EXÉCUTÉ]</span> |
+      <span>Corpus Vauvillensis // Archive Non-Archivable</span> |
+      <span class="pulse" id="status">Prêt</span>
+    </div>
+  </div>
+
+  <script>
+    // === DONNÉES FICTIVES — FRODO.COM (1990) ===
+    // Génération procédurale d'un dump hexadécimal narratif
+    
+    const ANOMALIES = {
+      '0x1A4C': {
+        type: 'anomaly',
+        label: 'CHAÎNE CRITIQUE',
+        content: `Offset 0x1A4C — Non-aligné au padding DOS standard\n\n<span class="highlight">SkisM2025 // Δ=0.78 // Ramat Gan - #OpMace2026 - Ispahan</span>\n\n[ANALYSE] Cette chaîne ne peut pas exister dans un binaire compilé en mars 1990. Le timestamp COFF associé (1990-03-14 02:18:11) correspond exactement à la fenêtre Transept (11m47s) des logs Francfort 2025.\n\n[HYPOTHÈSE] Le code a été <span class="delta">rétro-injecté</span> via une fuite ontologique. Voir rapport McAfee (21/06/2021).`,
+        bytes: [0x53, 0x6B, 0x69, 0x73, 0x4D, 0x32, 0x30, 0x32, 0x35]
+      },
+      '0x0218': {
+        type: 'delta',
+        label: 'MARQUEUR Δ',
+        content: `Offset 0x0218 — Zone de fluctuation ontologique\n\nValeur brute: <span class="delta">0x30 0x2E 0x37 0x38</span> → ASCII: "0.78"\n\n[INTERPRÉTATION] Δ = 0.78 correspond au niveau de dissonance de la strate 2025 (turbulent, sans substrat lithique). En 1990, cette valeur n'avait aucun sens sémantique.\n\n[NOTE] La fréquence d'apparition de ce motif forme une onde sinusoïdale à <span class="delta">33.3 Hz</span> — fréquence de résonance des Gaïalithes de Caen.`,
+        bytes: [0x30, 0x2E, 0x37, 0x38]
+      },
+      '0x0B11': {
+        type: 'silence',
+        label: 'SILENCE STRUCTURÉ',
+        content: `Offset 0x0B11 — Séquence de silence\n\nValeur: <span class="silence">0x2E 0x2E 0x2E</span> → ASCII: "•••"\n\n[ANALYSE] Cette séquence de trois points n'est pas un commentaire. Dans le FracturoScript, <span class="silence">•••</span> représente un espace de négociation, un tampon de décohérence de 7 secondes.\n\n[OBSERVATION] Cette séquence apparaît toujours avant les sauts conditionnels critiques du virus. Comme si le code "respirait" avant d'agir.`,
+        bytes: [0x2E, 0x2E, 0x2E]
+      },
+      '0x1440': {
+        type: 'anomaly',
+        label: 'COQUILLE TRICKSTER',
+        content: `Offset 0x1440 — Signature 144-Trickster-Shadow\n\nMotif répétitif: <span class="highlight">0x90 0x90 0x90</span> (NOP) × 144 occurrences\n\n[INTERPRÉTATION] 144 = 12×12. Dans le Corpus, c'est le nombre de familles runiques du FracturoScript. Cette séquence de NOP n'est pas du padding : c'est une <span class="highlight">coquille de camouflage</span> exploitant les archétypes de la Trame.\n\n[EFFET] Les analyseurs classiques voient du code mort. Les RuneSmiths voient une porte.`,
+        bytes: Array(144).fill(0x90)
+      },
+      '0x0000': {
+        type: 'info',
+        label: 'HEADER MZ/COFF',
+        content: `Offset 0x0000 — En-tête exécutable DOS\n\nSignature MZ: 0x4D 0x5A\nTimestamp COFF: <span class="highlight">1990-03-14 02:18:11 UTC</span>\n\n[ANOMALIE] Ce timestamp est encodé dans la structure de saut, pas dans le header. Comme si le binaire savait qu'il serait lu en 2021, 2025, ou 2075.\n\n[NOTE MCAFEE] "Les virus DOS ne stockent pas de metadata UTC. Ils utilisent le timestamp du système hôte au moment de l'infection. Mais ici, le timestamp est sculpté."`,
+        bytes: [0x4D, 0x5A, 0x90, 0x00]
+      }
+    };
+
+    const STRATES = {
+      '1990': { delta: '0.82', entropy: '7.82', label: 'Original — DOS 1990' },
+      '2021': { delta: '0.65', entropy: '7.91', label: 'McAfee Analysis — Entropie 33.3Hz' },
+      '2025': { delta: '0.78', entropy: '8.00', label: 'SkisM2025 — Fenêtre Transept' },
+      '2075': { delta: '0.47', entropy: '7.45', label: 'Transept — Boucle de Parsing' }
+    };
+
+    // Génération du dump hexadécimal (256 lignes × 16 octets = 4096 octets simulés)
+    function generateHexDump() {
+      const lines = [];
+      for (let line = 0; line < 256; line++) {
+        const offset = line * 16;
+        const offsetHex = '0x' + offset.toString(16).toUpperCase().padStart(4, '0');
+        
+        let hexBytes = [];
+        let asciiChars = [];
+        
+        for (let i = 0; i < 16; i++) {
+          const byteOffset = offset + i;
+          const offsetKey = '0x' + byteOffset.toString(16).toUpperCase().padStart(4, '0');
+          
+          // Déterminer si cet offset contient une anomalie
+          let byteValue, isAnomaly = false, anomalyType = '';
+          
+          if (ANOMALIES[offsetKey] && i < ANOMALIES[offsetKey].bytes.length) {
+            byteValue = ANOMALIES[offsetKey].bytes[i];
+            isAnomaly = true;
+            anomalyType = ANOMALIES[offsetKey].type;
+          } else {
+            // Génération procédurale "normale"
+            byteValue = Math.floor(Math.random() * 256);
+            // Ajouter quelques motifs réalistes de code DOS
+            if (Math.random() < 0.1) byteValue = 0x90; // NOP
+            if (Math.random() < 0.05) byteValue = 0xCD; // INT
+            if (Math.random() < 0.03) byteValue = 0xC3; // RET
+          }
+          
+          const hex = byteValue.toString(16).toUpperCase().padStart(2, '0');
+          const char = (byteValue >= 32 && byteValue <= 126) ? String.fromCharCode(byteValue) : '•';
+          
+          hexBytes.push({ hex, isAnomaly, anomalyType, offset: offsetKey });
+          asciiChars.push({ char, isAnomaly, anomalyType, offset: offsetKey });
+        }
+        
+        lines.push({ offsetHex, hexBytes, asciiChars });
+      }
+      return lines;
+    }
+
+    const hexData = generateHexDump();
+    let currentStrate = '1990';
+    let viewMode = 'raw';
+    let searchResults = [];
+    let currentSearchIndex = 0;
+
+    // === RENDU DU TERMINAL ===
+    function renderHexView() {
+      const offsetCol = document.getElementById('offset-col');
+      const hexCol = document.getElementById('hex-col');
+      const asciiCol = document.getElementById('ascii-col');
+      
+      offsetCol.innerHTML = '';
+      hexCol.innerHTML = '';
+      asciiCol.innerHTML = '';
+      
+      hexData.forEach((line, lineIndex) => {
+        // Offset
+        const offsetEl = document.createElement('div');
+        offsetEl.textContent = line.offsetHex;
+        offsetCol.appendChild(offsetEl);
+        
+        // Hex bytes
+        const hexLine = document.createElement('div');
+        hexLine.style.marginBottom = '2px';
+        line.hexBytes.forEach((byte, byteIndex) => {
+          const span = document.createElement('span');
+          span.className = 'byte';
+          span.textContent = byte.hex;
+          span.dataset.offset = byte.offset;
+          
+          if (viewMode === 'fracturo' && byte.isAnomaly) {
+            span.classList.add(byte.anomalyType);
+          } else if (viewMode === 'annotated' && byte.isAnomaly) {
+            span.classList.add('anomaly');
+          }
+          
+          span.addEventListener('click', () => showAnnotation(byte.offset));
+          hexLine.appendChild(span);
+          if (byteIndex % 4 === 3) hexLine.appendChild(document.createTextNode(' '));
+        });
+        hexCol.appendChild(hexLine);
+        
+        // ASCII
+        const asciiLine = document.createElement('div');
+        line.asciiChars.forEach((ch, chIndex) => {
+          const span = document.createElement('span');
+          span.className = 'char';
+          span.textContent = ch.char;
+          span.dataset.offset = ch.offset;
+          
+          if (viewMode === 'fracturo' && ch.isAnomaly) {
+            span.classList.add(ch.anomalyType);
+          } else if (viewMode === 'annotated' && ch.isAnomaly) {
+            span.classList.add('anomaly');
+          }
+          
+          span.addEventListener('click', () => showAnnotation(ch.offset));
+          asciiLine.appendChild(span);
+        });
+        asciiCol.appendChild(asciiLine);
+      });
+    }
+
+    function showAnnotation(offset) {
+      const annotation = ANOMALIES[offset];
+      const contentEl = document.getElementById('annotation-content');
+      const offsetEl = document.getElementById('current-offset');
+      
+      offsetEl.textContent = offset;
+      
+      if (annotation) {
+        contentEl.innerHTML = `<strong>${annotation.label}</strong><br><br>${annotation.content}`;
+        updateStatus(`Annotation chargée: ${annotation.label}`);
+      } else {
+        contentEl.innerHTML = `Offset ${offset}<br><br>Aucune annotation connue pour cet offset.<br><br><span class="dim">[Conseil] Activez le mode "Détecter Anomalies" pour révéler les signatures du Corpus.</span>`;
+        updateStatus('Offset standard');
+      }
+    }
+
+    function updateStatus(msg) {
+      const status = document.getElementById('status');
+      status.textContent = msg;
+      status.classList.remove('pulse');
+      void status.offsetWidth; // trigger reflow
+      status.classList.add('pulse');
+    }
+
+    function updateStrate(year) {
+      currentStrate = year;
+      const data = STRATES[year];
+      
+      document.getElementById('delta-display').textContent = data.delta;
+      document.getElementById('entropy-value').textContent = data.entropy;
+      document.getElementById('strate-display').textContent = year;
+      document.getElementById('entropy-fill').style.width = (parseFloat(data.entropy) / 8 * 100) + '%';
+      
+      // Effet visuel selon la strate
+      if (year === '2075') {
+        document.body.style.setProperty('--fg', '#66ccff');
+        document.body.style.setProperty('--dim', '#336699');
+      } else if (year === '2025') {
+        document.body.style.setProperty('--fg', '#ffcc00');
+        document.body.style.setProperty('--dim', '#996600');
+      } else {
+        document.body.style.setProperty('--fg', '#00ff41');
+        document.body.style.setProperty('--dim', '#008f24');
+      }
+      
+      updateStatus(`Strate changée: ${data.label}`);
+      renderHexView();
+    }
+
+    function searchAnomalies(query) {
+      searchResults = [];
+      const lowerQuery = query.toLowerCase();
+      
+      Object.entries(ANOMALIES).forEach(([offset, data]) => {
+        if (data.content.toLowerCase().includes(lowerQuery) || 
+            offset.toLowerCase().includes(lowerQuery) ||
+            data.label.toLowerCase().includes(lowerQuery)) {
+          searchResults.push(offset);
+        }
+      });
+      
+      // Recherche dans les données hex brutes simulées
+      if (lowerQuery.includes('skism') || lowerQuery.includes('2025')) {
+        if (!searchResults.includes('0x1A4C')) searchResults.push('0x1A4C');
+      }
+      if (lowerQuery.includes('δ') || lowerQuery.includes('delta') || lowerQuery.includes('0.78')) {
+        if (!searchResults.includes('0x0218')) searchResults.push('0x0218');
+      }
+      if (lowerQuery.includes('•••') || lowerQuery.includes('silence')) {
+        if (!searchResults.includes('0x0B11')) searchResults.push('0x0B11');
+      }
+      
+      currentSearchIndex = 0;
+      
+      if (searchResults.length > 0) {
+        updateStatus(`${searchResults.length} résultat(s) trouvé(s)`);
+        goToSearchResult(0);
+      } else {
+        updateStatus('Aucun résultat');
+      }
+    }
+
+    function goToSearchResult(index) {
+      if (searchResults.length === 0) return;
+      
+      currentSearchIndex = index % searchResults.length;
+      const offset = searchResults[currentSearchIndex];
+      
+      // Scroll to offset (simplified)
+      showAnnotation(offset);
+      updateStatus(`Résultat ${currentSearchIndex + 1}/${searchResults.length}: ${offset}`);
+      
+      // Highlight visually
+      document.querySelectorAll('.byte, .char').forEach(el => {
+        el.style.outline = '';
+        if (el.dataset.offset === offset) {
+          el.style.outline = '2px solid var(--alert)';
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    }
+
+    // === EVENT LISTENERS ===
+    document.getElementById('btn-load').addEventListener('click', () => {
+      updateStatus('Chargement de FRODO.ASM (1990)...');
+      setTimeout(() => {
+        renderHexView();
+        updateStatus('Fichier chargé — 4096 octets analysés');
+      }, 300);
+    });
+
+    document.getElementById('btn-anomaly').addEventListener('click', () => {
+      viewMode = 'annotated';
+      document.getElementById('view-mode').value = 'annotated';
+      renderHexView();
+      updateStatus('Mode Anomalies activé — Signatures du Corpus visibles');
+    });
+
+    document.getElementById('btn-entropy').addEventListener('click', () => {
+      // Animation d'analyse d'entropie
+      updateStatus('Calcul de l\'entropie de Shannon...');
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 5;
+        document.getElementById('entropy-fill').style.width = progress + '%';
+        document.getElementById('entropy-value').textContent = (7.5 + progress * 0.006).toFixed(2);
+        if (progress >= 100) {
+          clearInterval(interval);
+          updateStatus('Entropie: 8.00 bits/octet — Pic à 33.3 Hz détecté');
+        }
+      }, 50);
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      viewMode = 'raw';
+      document.getElementById('view-mode').value = 'raw';
+      currentStrate = '1990';
+      updateStrate('1990');
+      document.getElementById('annotation-content').innerHTML = 'Cliquez sur un octet ou une chaîne pour afficher l\'annotation.';
+      document.getElementById('current-offset').textContent = '—';
+      updateStatus('Vue réinitialisée');
+    });
+
+    document.getElementById('view-mode').addEventListener('change', (e) => {
+      viewMode = e.target.value;
+      renderHexView();
+      updateStatus(`Mode: ${e.target.options[e.target.selectedIndex].text}`);
+    });
+
+    document.getElementById('btn-search').addEventListener('click', () => {
+      const query = document.getElementById('search-input').value.trim();
+      if (query) searchAnomalies(query);
+    });
+
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const query = e.target.value.trim();
+        if (query) searchAnomalies(query);
+      }
+    });
+
+    document.getElementById('btn-next').addEventListener('click', () => {
+      goToSearchResult(currentSearchIndex + 1);
+    });
+
+    document.querySelectorAll('.timeline-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.timeline-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateStrate(btn.dataset.year);
+      });
+    });
+
+    // === INITIALISATION ===
+    window.addEventListener('load', () => {
+      renderHexView();
+      updateStatus('Terminal prêt — FRODO.COM chargé');
+      
+      // Effet de démarrage rétro
+      setTimeout(() => {
+        document.body.classList.add('flicker');
+        setTimeout(() => document.body.classList.remove('flicker'), 300);
+      }, 500);
+    });
+  </script>
+</body>
+</html>

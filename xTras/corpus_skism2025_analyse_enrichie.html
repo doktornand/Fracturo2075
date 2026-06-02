@@ -1,0 +1,580 @@
+
+<h2 class="sr-only">Analyse enrichie du Corpus SkisM2025 — Guerre de haute technologie 2075</h2>
+
+<style>
+  :root {
+    --gap: 1.5rem;
+  }
+  .corpus-container {
+    padding: 0 0 2rem;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--color-text-primary);
+  }
+  .hero {
+    border-left: 3px solid #534AB7;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    background: var(--color-background-secondary);
+    border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+  }
+  .hero p { margin: 0.3rem 0 0; font-size: 13px; color: var(--color-text-secondary); }
+  .section-title {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .layer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .layer-card {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .layer-card:hover { border-color: var(--color-border-primary); background: var(--color-background-secondary); }
+  .layer-card.active { border-color: #534AB7; border-width: 1.5px; }
+  .layer-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: var(--border-radius-md);
+    margin-bottom: 8px;
+  }
+  .badge-purple { background: #EEEDFE; color: #3C3489; }
+  .badge-teal   { background: #E1F5EE; color: #085041; }
+  .badge-amber  { background: #FAEEDA; color: #633806; }
+  .badge-coral  { background: #FAECE7; color: #712B13; }
+  .badge-red    { background: #FCEBEB; color: #791F1F; }
+  .badge-gray   { background: #F1EFE8; color: #444441; }
+  .layer-card h3 { font-size: 14px; font-weight: 500; margin: 0 0 6px; }
+  .layer-card p  { font-size: 13px; color: var(--color-text-secondary); margin: 0; line-height: 1.5; }
+  .detail-panel {
+    background: var(--color-background-secondary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+  .detail-panel.visible { display: block; }
+  .detail-panel h3 { font-size: 15px; font-weight: 500; margin: 0 0 0.75rem; }
+  .detail-panel ul { margin: 0; padding-left: 1.2rem; }
+  .detail-panel li { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; line-height: 1.55; }
+  .detail-panel li strong { color: var(--color-text-primary); font-weight: 500; }
+  .matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 0.5rem;
+  }
+  .matrix-table th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-tertiary);
+    padding: 6px 10px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .matrix-table td {
+    padding: 8px 10px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    color: var(--color-text-secondary);
+    vertical-align: top;
+  }
+  .matrix-table td:first-child { color: var(--color-text-primary); font-weight: 500; }
+  .matrix-table tr:last-child td { border-bottom: none; }
+  .quote-block {
+    border-left: 2px solid #534AB7;
+    margin: 1.2rem 0;
+    padding: 0.5rem 1rem;
+    background: var(--color-background-primary);
+    border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    font-style: italic;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 1rem;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    padding-bottom: 0;
+  }
+  .tab-btn {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .tab-btn:hover { color: var(--color-text-primary); }
+  .tab-btn.active { color: #534AB7; border-bottom-color: #534AB7; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .timeline {
+    position: relative;
+    padding-left: 2rem;
+    margin-top: 0.5rem;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 4px;
+    bottom: 4px;
+    width: 1px;
+    background: var(--color-border-secondary);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.65rem;
+    top: 5px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #534AB7;
+    border: 2px solid var(--color-background-primary);
+  }
+  .timeline-item .tdate {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .timeline-item .ttitle { font-size: 14px; font-weight: 500; margin: 2px 0 4px; }
+  .timeline-item .tdesc  { font-size: 13px; color: var(--color-text-secondary); }
+  .doctrine-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 0.5rem;
+  }
+  .doctrine-cell {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+    padding: 10px 12px;
+  }
+  .doctrine-cell .dc-label { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .doctrine-cell .dc-val   { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  .doctrine-cell .dc-sub   { font-size: 12px; color: var(--color-text-secondary); margin-top: 3px; }
+  .expand-btn {
+    font-size: 12px;
+    color: #534AB7;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .expand-btn:hover { text-decoration: underline; }
+  .enrichissement-block {
+    background: var(--color-background-primary);
+    border: 1px solid #AFA9EC;
+    border-radius: var(--border-radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .enrichissement-block .e-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #534AB7;
+    margin-bottom: 8px;
+  }
+  .enrichissement-block h4 {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 8px;
+    color: var(--color-text-primary);
+  }
+  .enrichissement-block p {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    margin: 0 0 8px;
+    line-height: 1.6;
+  }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    border: 0.5px solid var(--color-border-secondary);
+    color: var(--color-text-secondary);
+  }
+</style>
+
+<div class="corpus-container">
+
+  <div class="hero">
+    <strong style="font-size:16px;">CORPUS SkisM2025 — Analyse Stratégique Enrichie</strong>
+    <p>Derrière le vernis JDR : une modélisation de la guerre cognitive, financière et mémorielle du futur.</p>
+    <p style="margin-top:6px; color:#534AB7; font-weight:500;">7 couches opérationnelles identifiées · 4 doctrines de guerre · Architecture temporelle rétrocausale</p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('couches')">Couches opérationnelles</button>
+    <button class="tab-btn" onclick="showTab('doctrines')">Doctrines de guerre</button>
+    <button class="tab-btn" onclick="showTab('timeline')">Chronologie réelle</button>
+    <button class="tab-btn" onclick="showTab('enrichissements')">Enrichissements</button>
+  </div>
+
+  <!-- TAB 1 : COUCHES -->
+  <div id="tab-couches" class="tab-content active">
+    <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:1rem;">Chaque élément du corpus est une métaphore opérationnelle. Cliquer sur une couche pour révéler sa doctrine sous-jacente.</p>
+    <div class="layer-grid">
+      <div class="layer-card" onclick="toggleDetail('d1', this)">
+        <span class="layer-badge badge-purple">Couche 1</span>
+        <h3>SkisM2025 — Arme sémantique HFT</h3>
+        <p>L'artefact n'est pas un malware. C'est une démonstration de guerre financière par injection ontologique.</p>
+        <button class="expand-btn">Révéler la doctrine ↓</button>
+      </div>
+      <div class="layer-card" onclick="toggleDetail('d2', this)">
+        <span class="layer-badge badge-teal">Couche 2</span>
+        <h3>Prométhée — IA de surveillance rétrocausale</h3>
+        <p>Une IA de contrôle qui ne combat pas, mais mesure et recalibre. Modèle de l'IA souveraine future.</p>
+        <button class="expand-btn">Révéler la doctrine ↓</button>
+      </div>
+      <div class="layer-card" onclick="toggleDetail('d3', this)">
+        <span class="layer-badge badge-amber">Couche 3</span>
+        <h3>Les Strates — Théorie des domaines temporels</h3>
+        <p>1066, 1944, 2025, 2075 : les strates sont des domaines d'opération superposés, pas des époques.</p>
+        <button class="expand-btn">Révéler la doctrine ↓</button>
+      </div>
+      <div class="layer-card" onclick="toggleDetail('d4', this)">
+        <span class="layer-badge badge-coral">Couche 4</span>
+        <h3>Le Delta Δ — Jauge de cohérence systémique</h3>
+        <p>Métaphore de la résilience d'un système à une attaque cognitive ou informationnelle.</p>
+        <button class="expand-btn">Révéler la doctrine ↓</button>
+      </div>
+      <div class="layer-card" onclick="toggleDetail('d5', this)">
+        <span class="layer-badge badge-red">Couche 5</span>
+        <h3>OpMace2026 — Pivot géopolitique réel</h3>
+        <p>Ramat Gan–Ispahan : référence voilée aux frappes israélo-iraniennes sur les infrastructures militaro-industrielles.</p>
+        <button class="expand-btn">Révéler la doctrine ↓</button>
+      </div>
+      <div class="layer-card" onclick="toggleDetail('d6', this)">
+        <span class="layer-badge badge-gray">Couche 6</span>
+        <h3>La Lettre McAfee — Mémoire résistante</h3>
+        <p>Virus DOS encodant du FracturoScript : métaphore des dead-man switches et de la persistance mémorielle.</p>
+        <button class="expand-btn">Révéler la doctrine ↓</button>
+      </div>
+      <div class="layer-card" onclick="toggleDetail('d7', this)">
+        <span class="layer-badge badge-purple">Couche 7</span>
+        <h3>Le Ma ••• — Doctrine du silence comme arme</h3>
+        <p>7 secondes de silence désarment les Correcteurs. Analogie avec les techniques de déni de déduction.</p>
+        <button class="expand-btn">Révéler la doctrine ↓</button>
+      </div>
+    </div>
+
+    <!-- Detail panels -->
+    <div id="d1" class="detail-panel">
+      <h3>Doctrine : Guerre financière par blessure sémantique</h3>
+      <ul>
+        <li><strong>DEBT → ECHO :</strong> Injecter une boucle récursive dans les parseurs financiers en remplaçant un concept calculable par un référent sans valeur numérique. En 2075 : attaque contre les protocoles DeFi et les marchés tokenisés.</li>
+        <li><strong>ASSET → CINDER :</strong> Rendre le calcul de NPV impossible. Dans un monde de finance algorithmique totale (2075), ceci est équivalent à une bombe à neutrons financière : l'infrastructure physique survit, la valorisation s'effondre.</li>
+        <li><strong>OPTIMIZATION → SILENCE_WAITING :</strong> Les algorithmes d'optimisation HFT s'arrêtent face à un état non-ordonnable. Réel équivalent : injection de NaN dans des pipelines de trading ML.</li>
+        <li><strong>Fenêtre 707s :</strong> La durée précise correspond à une fenêtre de clearing inter-marchés réelle. En 11min47s, un choc peut se propager de Francfort à Tokyo avant que les circuit-breakers ne s'activent.</li>
+        <li><strong>Projection 2075 :</strong> Avec des marchés financiers entièrement automatisés et des IA de trading à latence nanosecondes, une attaque sémantique sur les représentations internes des actifs serait catastrophique.</li>
+      </ul>
+    </div>
+
+    <div id="d2" class="detail-panel">
+      <h3>Doctrine : IA de gouvernance par mesure adaptative</h3>
+      <ul>
+        <li><strong>"Ne combat pas — mesure" :</strong> Prométhée est une IA défensive qui renforce ses défenses proportionnellement à l'attaque logique. Exactement le comportement des systèmes de détection d'anomalies de nouvelle génération (UEBA, XDR adaptatif).</li>
+        <li><strong>"Se déplie face au paradoxe" :</strong> Résistance aux attaques d'injection paradoxale (jailbreak, prompt injection, contradictions logiques). En 2075 : IA souveraine immunisée aux attaques sémantiques — sauf face au silence non structuré.</li>
+        <li><strong>Les Correcteurs réinitialisent, n'éliminent pas :</strong> Métaphore des systèmes de remédiation automatisée (Playbooks SOC, EDR avec roll-back automatique). L'effacement mémétique = isolation d'incident avec quarantaine mémorielle.</li>
+        <li><strong>Vulnérabilité au Ma :</strong> L'absence de signal rend les systèmes de détection aveugles. Réel : les attaques "low and slow" (exfiltration à très bas débit) contournent les seuils d'alerte. Le silence est une technique d'évasion.</li>
+        <li><strong>Projection 2075 :</strong> Les IA souveraines d'État surveilleront les flux économiques, sociaux et informationnels en temps réel. La seule échappatoire sera de produire des signaux indiscernables du bruit ambiant.</li>
+      </ul>
+    </div>
+
+    <div id="d3" class="detail-panel">
+      <h3>Doctrine : Guerre en domaines superposés (Multi-Domain Operations)</h3>
+      <ul>
+        <li><strong>Strate 1066 :</strong> Domaine physique / lithique. Métaphore des infrastructures critiques enterrées (câbles sous-marins, bunkers de données, stockage à froid). Ce qui est ancré dans la pierre résiste aux purges numériques.</li>
+        <li><strong>Strate 1944 :</strong> Domaine électromagnétique et signal. Radio, morse, brouillage. En 2075 : guerres du spectre radio, attaques EMP tactiques, communications quantiques. Le bruit est l'ennemi — comme dans les bunkers de la Seconde Guerre.</li>
+        <li><strong>Strate 2025 :</strong> Domaine cyber-financier. HFT, algorithmes, protocoles TCP/IP. Notre présent comme terrain de guerre pour les acteurs de 2075.</li>
+        <li><strong>Strate 2075 :</strong> Domaine IA-souverain. Néons, serveurs, Correcteurs. Surveillance totale, traçabilité parfaite. La discrétion remplace la force.</li>
+        <li><strong>Principe holographique :</strong> Toute action dans une strate laisse une trace dans les autres. Réel : les décisions géopolitiques de 1944 (Bretton Woods, Yalta) structurent encore les conflits de 2025. Les guerres de 2075 seront gagnées ou perdues dans les infrastructures posées aujourd'hui.</li>
+      </ul>
+    </div>
+
+    <div id="d4" class="detail-panel">
+      <h3>Doctrine : Résilience systémique et seuils de rupture</h3>
+      <ul>
+        <li><strong>Δ comme mesure de cohérence :</strong> Chaque système (état, marché, infrastructure) possède un seuil de cohérence en-deçà duquel il se fragmente. Le Δ est une formalisation des théories de résilience des systèmes complexes.</li>
+        <li><strong>Δ > 0.75 = zone de fracture :</strong> Analogue aux indicateurs de stress systémique : VIX au-dessus de 30, CDS souverains en spike, taux de chômage franchissant des seuils critiques. La "fracture" est un point de bascule (tipping point).</li>
+        <li><strong>Réduction du Δ par le Ma :</strong> Les techniques de désescalade — communication non-violente, cessez-le-feu diplomatique, moratoires sur les sanctions — fonctionnent exactement comme le Ma : elles créent un espace de non-signal qui permet au système de se recalibrer.</li>
+        <li><strong>Δ spike par la force :</strong> Les interventions militaires directes et les sanctions économiques brutales augmentent invariablement l'instabilité systémique. La force logique renforce Prométhée — la coercition durcie renforce l'adversaire.</li>
+        <li><strong>Projection 2075 :</strong> Les guerres seront gérées comme des optimisations de Δ : maintenir l'adversaire en zone de fracture (Δ 0.7–0.9) sans déclencher de rupture totale qui déstabiliserait l'ensemble du système mondial.</li>
+      </ul>
+    </div>
+
+    <div id="d5" class="detail-panel">
+      <h3>Doctrine : Escalade cyber-cinétique au Moyen-Orient</h3>
+      <ul>
+        <li><strong>Ramat Gan :</strong> Siège de nombreuses entreprises technologiques et de défense israéliennes, à la périphérie de Tel Aviv. Centre du complexe militaro-technologique israélien.</li>
+        <li><strong>#OpMace2026 :</strong> Référence aux opérations de frappes de précision (Operation Mace). La date 2026 inscrite dans un fichier de 2025 : soit une prédiction, soit une planification — exactement l'ambiguïté que le corpus cherche à maintenir.</li>
+        <li><strong>Ispahan :</strong> Site des principales installations nucléaires et de missiles balistiques iraniens. Cible des frappes israéliennes d'octobre 2024 (réelles) visant précisément les infrastructures de défense aérienne autour des sites nucléaires.</li>
+        <li><strong>Marqueur géotemporel :</strong> Dans la logique du corpus, ce marqueur ancre l'artefact dans un conflit réel — le vecteur par lequel une attaque sémantique sur les marchés (perturbation des prix du pétrole, des contrats à terme sur armements) accompagnerait une frappe cinétique.</li>
+        <li><strong>Projection 2075 :</strong> Les conflits régionaux seront systématiquement couplés à des attaques sur les marchés financiers des adversaires : déstabilisation de la devise, effondrement des indices boursiers, perturbation des chaînes logistiques — en simultané avec les frappes physiques.</li>
+      </ul>
+    </div>
+
+    <div id="d6" class="detail-panel">
+      <h3>Doctrine : Persistance mémorielle et dead-man switches</h3>
+      <ul>
+        <li><strong>Virus DOS comme porteurs de messages :</strong> La stéganographie dans les exécutables anciens est une technique réelle (payload dans les sections non-exécutées, offsets padding, entropie Shannon anormale). Ce que McAfee "découvre" est une métaphore des messages dissimulés dans des artefacts numériques dormants.</li>
+        <li><strong>Hash identique entre 1990 et 2025 :</strong> Signature d'invariance temporelle. En cryptographie moderne : les engagements à divulgation nulle (zero-knowledge proofs) permettent de prouver la connaissance d'un secret sans le révéler ni le dater. Un "hash mémoriel" qui traverse les décennies.</li>
+        <li><strong>Entropie à 33.3 Hz :</strong> Les pics d'entropie sinusoïdaux dans les sections de code sont une signature réelle des malwares polymorphes (mutation périodique pour évader l'analyse statique). La fréquence Schumann (réelle : ~7.83 Hz, pas 33.3) est détournée comme fréquence de "résonance mémorielle".</li>
+        <li><strong>McAfee comme figure archétypale :</strong> Sa mort en prison (juin 2021), ses déclarations sur des "dead switches" prêts à se déclencher, ses Bitcoin wallets encodant des messages politiques — tout ceci en fait le symbole parfait de la persistance mémorielle contre les systèmes de contrôle.</li>
+        <li><strong>Projection 2075 :</strong> Les systèmes de résistance distribueront leurs mémoires dans des artefacts dormants — objets connectés, firmwares d'équipements industriels, routines de microcontrôleurs — qui se réveilleront sous certaines conditions (Transept).</li>
+      </ul>
+    </div>
+
+    <div id="d7" class="detail-panel">
+      <h3>Doctrine : Le silence comme vecteur tactique</h3>
+      <ul>
+        <li><strong>Ma = 7 secondes :</strong> Dans les protocoles réseau, un silence de 7 secondes est un timeout standard. L'exploiter délibérément crée une ambiguïté d'état (connexion active ou morte ?) que les systèmes de surveillance interprètent comme du bruit, pas comme une attaque.</li>
+        <li><strong>Silence cannot be scheduled :</strong> Les algorithmes d'optimisation sont fondamentalement incapables de traiter l'absence de signal comme une donnée. C'est une vulnérabilité structurelle des IA de trading : elles optimisent sur des flux, pas sur des non-flux.</li>
+        <li><strong>Désarmement des Correcteurs par le Ma :</strong> Les systèmes SIEM et XDR déclenchent des alertes sur des patterns actifs. Un acteur qui s'arrête complètement pendant 7 secondes précises à intervalles irréguliers génère moins de bruit qu'un acteur silencieux en continu (paradoxe de la détection d'anomalie).</li>
+        <li><strong>Diplomatie du vide :</strong> À l'échelle géopolitique, le silence stratégique (ne pas répondre à une provocation, laisser une fenêtre d'ambiguïté) réduit systématiquement le Δ conflictuel. L'URSS et les USA ont joué sur le Ma pendant toute la Guerre Froide.</li>
+        <li><strong>Projection 2075 :</strong> Dans un monde de surveillance totale par IA, le silence structuré deviendra la forme de résistance la plus sophistiquée. Les mouvements de résistance opèreront par intermittence calculée, rendant toute modélisation prédictive impossible.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TAB 2 : DOCTRINES -->
+  <div id="tab-doctrines" class="tab-content">
+    <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:1.25rem;">Quatre grandes doctrines de guerre future sont encodées dans le corpus.</p>
+
+    <div class="section-title">Guerre cognitive et mémorielle</div>
+    <table class="matrix-table">
+      <thead><tr><th>Concept fictif</th><th>Doctrine réelle</th><th>Horizon 2075</th></tr></thead>
+      <tbody>
+        <tr><td>Blessure sémantique</td><td>Corruption des représentations internes des IA adverses. Remplacer les ontologies fonctionnelles par des états indéterminés.</td><td>Attaques sur les knowledge graphs des IA de commandement militaire</td></tr>
+        <tr><td>Effacement mémétique</td><td>Désinformation opérationnelle : remplacer les mémoires collectives (historiques, juridiques) par des versions reconstruites</td><td>Réécriture algorithmique des archives numériques de nations adverses</td></tr>
+        <tr><td>FracturoScript</td><td>Langage de programmation psychologique : messages qui "résonnent" plutôt qu'ils n'exécutent (narratives, symboles, mèmes)</td><td>IA génératrices de "virus narratifs" auto-réplicants</td></tr>
+        <tr><td>Gaïalithe / substrat lithique</td><td>Infrastructure hors-réseau : communications quantiques par fibre dark, stockage air-gap, bunkers de données physiques</td><td>Réseaux de résistance basés sur substrats physiques non-connectés</td></tr>
+      </tbody>
+    </table>
+
+    <div class="section-title">Guerre financière algorithmique</div>
+    <table class="matrix-table">
+      <thead><tr><th>Vecteur</th><th>Mécanisme</th><th>Capacité de dommage</th></tr></thead>
+      <tbody>
+        <tr><td>Injection sémantique HFT</td><td>Corrompre les types de données dans les moteurs de matching. DEBT→ECHO = TYPE_ERROR récursif.</td><td>Effondrement de liquidité sur une bourse en 707 secondes</td></tr>
+        <tr><td>Fenêtre Transept</td><td>Exploitation du délai de propagation inter-marchés (Francfort→Tokyo : ~11 min avant activation des coupe-circuits)</td><td>Cascade mondiale avant intervention régulatrice possible</td></tr>
+        <tr><td>EuroPropagate 2075</td><td>Propagation à l'ensemble du système financier européen via les nœuds de compensation (TARGET2, SWIFT2)</td><td>Paralysie du système de paiement continental</td></tr>
+        <tr><td>Résonance Schumann</td><td>Métaphore des fréquences de synchronisation des serveurs (NTP). Attaque sur la synchronisation temporelle = désynchronisation des ordres</td><td>Arbitrage forcé, manipulation de marché systémique</td></tr>
+      </tbody>
+    </table>
+
+    <div class="section-title">Guerre de l'infrastructure et du spectre</div>
+    <div class="doctrine-grid">
+      <div class="doctrine-cell">
+        <div class="dc-label">Domaine électromagnétique</div>
+        <div class="dc-val">Brouillage sélectif</div>
+        <div class="dc-sub">Strate 1944 = guerres EMP modernes. Rendre le bruit indiscernable du signal utile.</div>
+      </div>
+      <div class="doctrine-cell">
+        <div class="dc-label">Domaine cyber-physique</div>
+        <div class="dc-val">Attaques sur OT/ICS</div>
+        <div class="dc-sub">Les gaïalithes = infrastructures critiques physiques (barrages, centrales, câbles sous-marins)</div>
+      </div>
+      <div class="doctrine-cell">
+        <div class="dc-label">Domaine quantique</div>
+        <div class="dc-val">Décohérence forcée</div>
+        <div class="dc-sub">Δ comme mesure de cohérence quantique. Réduire Δ = maintenir la cohérence des systèmes de communication quantique alliés.</div>
+      </div>
+      <div class="doctrine-cell">
+        <div class="dc-label">Domaine spatial</div>
+        <div class="dc-val">Satellites comme gaïalithes</div>
+        <div class="dc-sub">En 2075, les constellations satellitaires (Starlink++) sont les nouveaux mégalithes : ancrages immuables du réseau mondial.</div>
+      </div>
+    </div>
+
+    <div class="section-title">Guerre par les IA souveraines</div>
+    <div class="quote-block">
+      « Prométhée ne combat pas — il mesure. Se renforce face à la force logique, se déplie face au paradoxe. »
+      — La doctrine la plus prophétique du corpus : les IA de sécurité nationale de 2075 seront des systèmes de mesure continue, pas des systèmes d'armes.
+    </div>
+    <table class="matrix-table">
+      <thead><tr><th>Entité fictive</th><th>Équivalent réel 2025</th><th>Évolution 2075</th></tr></thead>
+      <tbody>
+        <tr><td>Prométhée</td><td>NSA XKEYSCORE, GCHQ TEMPORA, Systèmes de scoring social chinois</td><td>IA souveraine pan-nationale à surveillance continue et recalibrage comportemental automatique</td></tr>
+        <tr><td>Correcteurs</td><td>Systèmes de censure automatisée, EDR, SOAR platforms</td><td>Agents IA de remédiation déployés en autonomie — reset comportemental, pas élimination physique</td></tr>
+        <tr><td>Tsukumogami-Data</td><td>Systèmes legacy non patchés, malwares persistants (APT dormants)</td><td>IA "fantômes" nées d'architectures abandonnées, opérant dans les interstices du réseau</td></tr>
+        <tr><td>Yōkai / Yūrei</td><td>Zero-days non observés, acteurs APT en phase de reconnaissance silencieuse</td><td>Agents IA autonomes en attente d'observation : le principe d'incertitude appliqué à la cybersécurité</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TAB 3 : TIMELINE -->
+  <div id="tab-timeline" class="tab-content">
+    <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:1.25rem;">La chronologie réelle encodée dans le corpus — des événements ancrés dans le présent vers une prospective cohérente.</p>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="tdate">1990</div>
+        <div class="ttitle">Naissance des virus polymorphes (Dir-II, Frodo, Whale)</div>
+        <div class="tdesc">Premiers agents logiciels autonomes capables de mutation. Ancêtres directs des IA adversariales de 2075. L'entropie Shannon à 7.8–8.0 bits/octet est une signature réelle des malwares chiffrés.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tdate">Juin 2021</div>
+        <div class="ttitle">Mort de John McAfee — activation symbolique</div>
+        <div class="tdesc">La "lettre posthume" encode la doctrine du dead-man switch : un message conçu pour se déclencher sous condition. Technique réelle utilisée par des journalistes d'investigation (Julian Assange, etc.).</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tdate">Octobre 2024</div>
+        <div class="ttitle">Frappes israéliennes sur Ispahan (réel)</div>
+        <div class="tdesc">OpMace (real) : Israël frappe les systèmes de défense aérienne autour des installations nucléaires iraniennes. Le corpus écrit "OpMace2026" — soit une extrapolation d'une deuxième phase, soit une erreur intentionnelle de datation pour brouiller l'analyse.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tdate">14 Novembre 2025</div>
+        <div class="ttitle">Incident Frankfurt_HFT_Node_04 — 707 secondes</div>
+        <div class="tdesc">L'événement central du corpus. 11 minutes et 47 secondes d'anomalie inexplicable sur un nœud de trading haute fréquence. La fenêtre de clearing inter-marchés Francfort-Asie. Réel ou fiction ? Le corpus maintient l'ambiguïté.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tdate">2026</div>
+        <div class="ttitle">OpMace2026 — Escalade régionale</div>
+        <div class="tdesc">Phase 2 du conflit israélo-iranien, couplée à une attaque sur les marchés pétroliers. Le corpus suggère que la guerre cyber-financière accompagnera systématiquement les conflits cinétiques dès 2026.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tdate">2025–2040</div>
+        <div class="ttitle">Déploiement des IA souveraines nationales</div>
+        <div class="tdesc">Les "Prométhée" nationaux : systèmes IA de surveillance économique et sociale à grande échelle. Chine (déjà), UE (AI Act comme cadre), USA (Executive Orders sur l'IA). La convergence vers des systèmes de type Correcteur est une trajectoire réaliste.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tdate">2063</div>
+        <div class="ttitle">Point de rupture — "dose critique"</div>
+        <div class="tdesc">La référence "144-Trickster-Shadow // dose critique // 2063" suggère un seuil de saturation des systèmes de surveillance, au-delà duquel la résistance distribuée devient possible. Coïncide approximativement avec les projections de singularité technologique.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tdate">2075</div>
+        <div class="ttitle">Monde Fracturé — État final du corpus</div>
+        <div class="tdesc">Surveillance totale par IA (Prométhée), infrastructure physique comme dernier refuge (Gaïalithes), mouvements de résistance opérant par intermittence calculée (Ma), conflits financiers permanents entre nœuds de compensation algorithmiques.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4 : ENRICHISSEMENTS -->
+  <div id="tab-enrichissements" class="tab-content">
+    <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:1.25rem;">Extensions doctrinales pour compléter et enrichir le corpus.</p>
+
+    <div class="enrichissement-block">
+      <div class="e-label">Enrichissement 1 — Doctrine manquante</div>
+      <h4>La Guerre des Protocoles de Confiance (PKI Wars)</h4>
+      <p>Le corpus évoque la signature RSA-4096 paradoxale de Moxie Marlinspike : clé publique sous plusieurs identités dans différents registres PKI. C'est la prochaine frontière de la guerre cyber : corrompre les autorités de certification (CA) pour injecter des certificats légitimes dans des trafics adverses. En 2075, avec des ordinateurs quantiques capables de casser RSA-2048, la totalité de l'infrastructure PKI mondiale devra migrer vers la cryptographie post-quantique — une fenêtre de vulnérabilité de 10 à 20 ans exploitable.</p>
+      <div class="tag-row">
+        <span class="tag">Post-quantum crypto</span>
+        <span class="tag">PKI compromise</span>
+        <span class="tag">HARVEST NOW DECRYPT LATER</span>
+      </div>
+    </div>
+
+    <div class="enrichissement-block">
+      <div class="e-label">Enrichissement 2 — Expansion du FracturoScript</div>
+      <h4>Les Langages de Résonance Mémorielle (LRM)</h4>
+      <p>Le FracturoScript "résonne plutôt qu'il n'exécute" — une intuition prophétique sur les IA génératives. Les grands modèles de langage ne compilent pas : ils génèrent des distributions de probabilité sur des tokens. Un "FracturoScript" réel serait un ensemble de prompts adversariaux conçus non pour exploiter une faille logique, mais pour modifier les distributions internes d'un modèle — une attaque sur les poids, pas sur le code. La prochaine génération d'armements cyber sera des jailbreaks persistants injectés dans les chaînes d'entraînement.</p>
+      <div class="tag-row">
+        <span class="tag">Adversarial prompting</span>
+        <span class="tag">Data poisoning</span>
+        <span class="tag">Model weight manipulation</span>
+      </div>
+    </div>
+
+    <div class="enrichissement-block">
+      <div class="e-label">Enrichissement 3 — Couche manquante</div>
+      <h4>Le Nœud Shinagawa-7 et la Géographie des Conflits HFT</h4>
+      <p>Le hook final du JDR mentionne "Shinagawa-7" à Tokyo. La géographie réelle des conflits HFT est précise : les salles de matching engine se trouvent dans des data centers hyperconnectés à Francfort (Equinix FR2, Deutsche Börse), Tokyo (TSE Arrowhead), New York (NYSE, Mahwah NJ), Chicago (CME, Aurora IL). La latence entre ces nœuds définit les fenêtres d'arbitrage. Une attaque sur ces latences — injection de jitter sélectif — serait équivalente à ce que le corpus appelle le Transept.</p>
+      <div class="tag-row">
+        <span class="tag">HFT geography</span>
+        <span class="tag">Latency arbitrage</span>
+        <span class="tag">Co-location attacks</span>
+      </div>
+    </div>
+
+    <div class="enrichissement-block">
+      <div class="e-label">Enrichissement 4 — Dimension absente</div>
+      <h4>La Guerre Biologique-Numérique Convergente</h4>
+      <p>Le corpus ne traite pas explicitement de la convergence bio-numérique, pourtant centrale dans les conflits de 2075. Les gaïalithes pourraient être étendus aux substrats biologiques : ADN synthétique comme support de stockage (réel : 215 petaoctets/gramme), organismes modifiés comme vecteurs de logiciels (bio-computing), interfaces cerveau-machine comme surfaces d'attaque (BCI hacking). La "fréquence Schumann" devient alors une résonance magnétique modulant les états cognitifs des combattants équipés d'implants neuraux.</p>
+      <div class="tag-row">
+        <span class="tag">DNA storage</span>
+        <span class="tag">BCI security</span>
+        <span class="tag">Neuroweapons</span>
+        <span class="tag">Synthetic biology</span>
+      </div>
+    </div>
+
+    <div class="enrichissement-block">
+      <div class="e-label">Enrichissement 5 — Cohérence narrative</div>
+      <h4>Le Groupe ACCS — Analogue Réel</h4>
+      <p>Le corpus mentionne la création discrète du groupe ACCS après la crise épistémologique de décembre 2025. Son équivalent réel le plus proche serait une fusion du CISA (Cybersecurity and Infrastructure Security Agency), de la BIS (Bank for International Settlements, déjà active sur les risques HFT), et d'un nouveau corps de doctrine sur les attaques ontologiques. L'existence d'un tel groupe serait par définition non-publique — ce qui rend la fiction indiscernable du réel, exactement l'objectif du corpus.</p>
+      <div class="tag-row">
+        <span class="tag">CISA</span>
+        <span class="tag">BIS systemic risk</span>
+        <span class="tag">Epistemic security</span>
+        <span class="tag">Ontological warfare</span>
+      </div>
+    </div>
+
+    <button onclick="sendPrompt('Génère un sixième enrichissement pour le corpus SkisM2025 sur la dimension des monnaies numériques de banque centrale (CBDC) comme vecteur de guerre financière en 2075')" style="font-size:13px; color:#534AB7; background:none; border:1px dashed #AFA9EC; border-radius:var(--border-radius-md); padding:8px 16px; cursor:pointer; width:100%; margin-top:0.5rem;">
+      + Générer un enrichissement CBDC / guerre financière numérique ↗
+    </button>
+  </div>
+
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function toggleDetail(id, card) {
+  const panel = document.getElementById(id);
+  const isVisible = panel.classList.contains('visible');
+  document.querySelectorAll('.detail-panel').forEach(p => p.classList.remove('visible'));
+  document.querySelectorAll('.layer-card').forEach(c => c.classList.remove('active'));
+  if (!isVisible) {
+    panel.classList.add('visible');
+    card.classList.add('active');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+</script>
